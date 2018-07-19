@@ -41,6 +41,7 @@
     <option name="width" value="950" />
     <option name="height" value="789" />
   </component>
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
   <component name="ProjectView">
     <navigator proportions="" version="1">
       <foldersAlwaysOnTop value="true" />
@@ -98,12 +99,12 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1531997963928</updated>
-      <workItem from="1531997965611" duration="270000" />
+      <workItem from="1531997965611" duration="527000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="270000" />
+    <option name="totallyTimeSpent" value="527000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="1920" y="27" width="1920" height="1053" extended-state="6" />
@@ -112,10 +113,10 @@
       <window_info anchor="bottom" id="Event Log" order="7" sideWeight="0.5005342" side_tool="true" weight="0.32765958" />
       <window_info anchor="bottom" id="NativeScript" order="11" />
       <window_info anchor="bottom" id="Run" order="2" weight="0.3133188" />
-      <window_info anchor="bottom" id="Version Control" order="9" show_stripe_button="false" />
+      <window_info anchor="bottom" id="Version Control" order="9" />
       <window_info id="npm" order="3" sideWeight="0.50054765" side_tool="true" weight="0.25" />
       <window_info anchor="right" id="Mongo Explorer" order="3" />
-      <window_info active="true" anchor="bottom" id="Terminal" order="8" sideWeight="0.49946582" visible="true" weight="0.3264192" />
+      <window_info active="true" anchor="bottom" id="Terminal" order="8" sideWeight="0.49946582" visible="true" weight="0.32785088" />
       <window_info anchor="right" id="Remote Host" order="4" />
       <window_info content_ui="combo" id="Project" order="0" sideWeight="0.4976744" visible="true" weight="0.25" />
       <window_info anchor="bottom" id="Docker" order="12" show_stripe_button="false" />
