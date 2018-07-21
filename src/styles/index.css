@@ -1,0 +1,48 @@
+body {
+  margin: 0;
+  padding: 0;
+  font-family: sans-serif;
+}
+
+.service-list__container .card{
+  margin: 20px 0;
+}
+
+.header-page{
+  padding: 100px 0;
+}
+
+.card__preload {
+  border: 1px solid #e3e3e3!important;
+}
+
+.card-title__preload{
+  height: 40px;
+  width: 20%;
+  background: #e3e3e3;
+}
+
+.card-text__preload{
+  height: 30px;
+  width: 90%;
+  background: #e3e3e3;
+}
+
+.card-link__preload{
+  height: 30px;
+  width: 150px;
+  background: #e3e3e3;
+}
+
+.service__preload-heading{
+  height: 48px;
+  width: 20%;
+  background: #e3e3e3;
+}
+
+.service__preload-content{
+  margin-top: 20px;
+  height: 200px;
+  width: 100%;
+  background: #e3e3e3;
+}
