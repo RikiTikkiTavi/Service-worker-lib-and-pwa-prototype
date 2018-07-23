@@ -5,6 +5,8 @@ import {connect} from 'react-redux';
 import {Link} from 'react-router-dom';
 import Header from '../Header'
 import ServiceListPreload from './service-list-preload'
+import getListOfServices from '../../actions/getListOfServices'
+import axios from 'axios'
 
 import emulateGetServices from './list-of-services';
 
@@ -17,11 +19,21 @@ class App extends Component {
 		};
 	}
 
+	testFallback(){
+		axios
+			.get('/api')
+			.catch(error => {
+				console.log("TEST FALLBACK", error);
+			})
+			.then(response => {console.log(response)})
+
+	}
+
 	componentDidMount() {
 		this._asyncRequest =
-			emulateGetServices
+			getListOfServices()
 			.then(SERVICES => {
-				console.log("THEN")
+				console.log(SERVICES)
 				this._asyncRequest = null;
 				this.setState({SERVICES: SERVICES, loading: false});
 			});
@@ -48,6 +60,9 @@ class App extends Component {
 			<Fragment>
 				<Header/>
 				<div className="container service-list__container">
+					<div className="row">
+						<button onClick={this.testFallback.bind(this)} className="btn btn-primary">Test Fallback</button>
+					</div>
 					<div className="row">
 						{SERVICES.map((service, index) => {
 							let cols;

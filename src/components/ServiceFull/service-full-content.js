@@ -15,7 +15,7 @@ class ServiceFullContent extends Component {
 				</div>
 				<div className="row">
 					<div className="col-12">
-						<p> {service.content} </p>
+						<p> {service.description} </p>
 					</div>
 				</div>
 			</div>

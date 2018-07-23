@@ -11,8 +11,8 @@ class ServiceListPreload extends Component {
 						<div className={`col-md-12`}>
 							<div className="card card__preload">
 								<div className="card-body">
-									<h5 className="card-title"><div className="card-title__preload"/></h5>
-									<p className="card-text"><div className="card-text__preload"/></p>
+									<div className="card-title card-title__preload"/>
+									<div className="card-text card-text__preload"/>
 									<div className="card-link__preload"/>
 								</div>
 							</div>

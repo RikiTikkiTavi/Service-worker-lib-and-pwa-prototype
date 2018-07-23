@@ -1,4 +1,4 @@
-let emulateGetServices = new Promise((resolve => {
+function emulateGetServices(){
 	const SERVICES = [
 		{
 			id: 1,
@@ -34,9 +34,13 @@ let emulateGetServices = new Promise((resolve => {
 			'With supporting text below as a natural lead-in to additional content.'
 		},
 	];
-	setTimeout(() => {
-		resolve(SERVICES);
-	}, 2000);
-}));
+	return new Promise((resolve => {
+		console.log("STARTING TIMEOUT");
+		setTimeout(() => {
+			console.log("TIMEOUT FINISHED");
+			resolve(SERVICES)
+		}, 2000)
+	}));
+}
 
 export default emulateGetServices;
