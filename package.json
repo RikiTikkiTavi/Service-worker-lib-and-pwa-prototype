@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "body-parser": "^1.18.3",
+    "express": "^4.16.3",
+    "concurrently": "^3.6.0",
     "babel-cli": "^6.26.0",
     "babel-core": "^6.26.3",
     "babel-eslint": "^7.2.3",
@@ -43,9 +46,7 @@
   },
   "scripts": {
     "client": "webpack-dev-server --no-info --mode development --devtool inline-source-map --hot",
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test --env=jsdom",
-    "eject": "react-scripts eject"
+    "server": "nodemon --exec babel-node server/app.js",
+    "dev": "concurrently \"npm run server\" \"npm run client\""
   }
 }
