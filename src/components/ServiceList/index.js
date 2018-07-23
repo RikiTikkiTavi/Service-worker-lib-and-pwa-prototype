@@ -61,7 +61,9 @@ class App extends Component {
 				<Header/>
 				<div className="container service-list__container">
 					<div className="row">
-						<button onClick={this.testFallback.bind(this)} className="btn btn-primary">Test Fallback</button>
+						<div className="col-12">
+                            <button onClick={this.testFallback.bind(this)} className="btn btn-primary">Test Fallback</button>
+						</div>
 					</div>
 					<div className="row">
 						{SERVICES.map((service, index) => {
