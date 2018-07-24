@@ -4,7 +4,7 @@ const router = express.Router();
 
 /* GET LIST OF SERVICES */
 router.get('/get_list_of_services', (req, res) => {
-	/* TEMPORARY TIMER FOR PRELAOD */
+	/* TEMPORARY TIMER FOR PRELOAD */
 	const list_of_services = [
 		{"id": 1, "name": "Общий план поступления", "description": "Поэтапный план поступления основанный на ваших данных.", "size": "big", "image": "/content/images/cat_1.jpg"},
 		{

@@ -6,6 +6,7 @@ We can set params in cache or some json file before calling registerServiceWorke
 
 /*
 PROBLEM: How to change content in cache on its change in server
+NOW: No dynamic caching when online
 */
 
 //TODO: Fetch params from cache or json file
