@@ -10,7 +10,7 @@ PROBLEM: How to change content in cache on its change in server
 
 //TODO: Fetch params from cache or json file
 const doCache = true;
-const cacheImages = true;
+const cacheImages = false;
 
 // Delete old caches
 self.addEventListener('activate', event => {
@@ -48,25 +48,34 @@ self.addEventListener('install', event => {
 						const apiRequestGetServices = '/api/get_list_of_services';
 
 						// 1)
-						fetch(apiRequestGetServices).then(services => {
+						fetch(apiRequestGetServices).then(responseRaw => {
 
 							// Cache fetched apiRequestGetServices
-							cache.put(apiRequestGetServices, services);
+							console.log("CACHING API...");
+							const responseRawClone = responseRaw.clone();
+							cache.put(apiRequestGetServices, responseRawClone);
 
-							// 2) If cache images
+							// 2) If image caching enabled
 							if (cacheImages) {
-								services.forEach((service, i) => {
-									cache.add(service.image)
-								})
+								console.log("CACHING IMAGES...");
+								responseRaw.json()
+									.then(response => {
+										const services = response;
+										services.forEach((service, i) => {
+											cache.add(service.image)
+										})
+									})
 							}
 						});
 
 						// 3) Cache static css, images, js
+						console.log("CACHING STATIC...");
 						const urlsToCache = [
 							'/',
 							assets['main.js'],
 							'/manifest.json',
 							assets['favicon.ico'],
+							'/content/images/dummy.jpg'
 						];
 						cache.addAll(urlsToCache);
 					});
@@ -114,8 +123,9 @@ self.addEventListener('fetch', event => {
 					}
 				}
 
-				// If server not available return dummy or just fail message
-				return new Response("SERVER NOT AVAILABLE")
+				// If server not available return dummy image
+				const dummyImageResponse = caches.match('/content/images/dummy.jpg');
+				return dummyImageResponse
 			}
 
 			//Else return cached image

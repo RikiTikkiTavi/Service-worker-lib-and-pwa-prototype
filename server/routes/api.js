@@ -15,12 +15,13 @@ router.get('/get_list_of_services', (req, res) => {
 			"image": "/content/images/cat_2.jpg"
 		},
 		{
-		"id": 3, "name": "Special title treatment", "description": "With supporting text below as a natural lead-in to additional content.", "size": "small"},
+		"id": 3, "name": "Special title treatment", "description": "With supporting text below as a natural lead-in to additional content.", "size": "small", "image": "/content/images/cat_1.jpg"},
 		{
 			"id": 4,
 			"name": "Special title treatment",
 			"description": "With supporting text below as a natural lead-in to additional content.",
-			"size": "small"
+			"size": "small",
+			"image": "/content/images/cat_2.jpg"
 		}];
 	setTimeout(() => {
 		res.send(list_of_services)
