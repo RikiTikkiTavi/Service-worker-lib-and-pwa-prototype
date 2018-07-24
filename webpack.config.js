@@ -47,7 +47,8 @@ module.exports = {
 		open: false,
 		historyApiFallback: true,
 		proxy: {
-			'/api/*': 'http://localhost:8080'
+			'/api/*': 'http://localhost:8080',
+			'/images/*': 'http://localhost:8080'
 		}
 	},
 	plugins: [

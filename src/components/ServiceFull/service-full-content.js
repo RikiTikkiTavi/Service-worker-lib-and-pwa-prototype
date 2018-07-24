@@ -16,6 +16,7 @@ class ServiceFullContent extends Component {
 				<div className="row">
 					<div className="col-12">
 						<p> {service.description} </p>
+						<img className="img-fluid" src={service.image}/>
 					</div>
 				</div>
 			</div>

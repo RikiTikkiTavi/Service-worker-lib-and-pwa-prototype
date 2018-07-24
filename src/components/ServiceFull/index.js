@@ -21,7 +21,6 @@ class ServiceFull extends Component {
 	}
 
 	componentDidMount() {
-		console.log("DidMount")
 		this._asyncRequest =
 			getListOfServices()
 				.then(SERVICES => {

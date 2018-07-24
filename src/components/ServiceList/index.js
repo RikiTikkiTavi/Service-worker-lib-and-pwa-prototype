@@ -19,24 +19,26 @@ class App extends Component {
 		};
 	}
 
-	testFallback(){
+	testFallback() {
 		axios
 			.get('/api')
 			.catch(error => {
-				console.log("TEST FALLBACK", error);
+				console.log(error);
 			})
-			.then(response => {console.log(response)})
+			.then(response => {
+				alert(response.data)
+			})
 
 	}
 
 	componentDidMount() {
 		this._asyncRequest =
 			getListOfServices()
-			.then(SERVICES => {
-				console.log(SERVICES)
-				this._asyncRequest = null;
-				this.setState({SERVICES: SERVICES, loading: false});
-			});
+				.then(SERVICES => {
+					console.log(SERVICES)
+					this._asyncRequest = null;
+					this.setState({SERVICES: SERVICES, loading: false});
+				});
 	}
 
 	componentWillUnmount() {
@@ -62,7 +64,7 @@ class App extends Component {
 				<div className="container service-list__container">
 					<div className="row">
 						<div className="col-12">
-                            <button onClick={this.testFallback.bind(this)} className="btn btn-primary">Test Fallback</button>
+							<button onClick={this.testFallback.bind(this)} className="btn btn-primary">Test Fallback</button>
 						</div>
 					</div>
 					<div className="row">

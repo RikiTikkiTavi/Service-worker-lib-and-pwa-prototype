@@ -42,4 +42,6 @@ ReactDOM.render(<Root/>, document.getElementById('root'));
  * chromium-browser --user-data-dir=/tmp/foo --unsafely-treat-insecure-origin-as-secure=http://localhost:3003
  *
  */
+
+const cacheImages = true;
 registerServiceWorker();
