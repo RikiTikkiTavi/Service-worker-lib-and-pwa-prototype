@@ -73,6 +73,8 @@ self.addEventListener('install', event => {
 						console.log("CACHING STATIC...");
 						const urlsToCache = [
 							'/',
+							'/services',
+							'/service-worker.js',
 							assets['main.js'],
 							'/manifest.json',
 							assets['favicon.ico'],

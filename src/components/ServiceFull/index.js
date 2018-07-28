@@ -3,10 +3,9 @@ import PropTypes from "prop-types";
 import {connect} from "react-redux";
 
 import Header from "./../Header";
-import emulateGetServices from '../ServiceList/list-of-services';
 import ServiceFullContent from "./service-full-content";
 import ServiceFullContentPreload from './service-full-content-preload';
-import getListOfServices from '../../actions/getListOfServices'
+import {ServiceCollection} from '../../models'
 
 
 class ServiceFull extends Component {
@@ -22,8 +21,9 @@ class ServiceFull extends Component {
 
 	componentDidMount() {
 		this._asyncRequest =
-			getListOfServices()
+			ServiceCollection.fetch
 				.then(SERVICES => {
+					console.log("GOT RESPONSE");
 					let SERVICE = SERVICES.find((service) => service.id === parseInt(this.props.match.params.id));
 					this._asyncRequest = null;
 					this.setState({SERVICE: SERVICE, loading: false});

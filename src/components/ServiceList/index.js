@@ -2,13 +2,12 @@
 import React, {Component, Fragment} from 'react';
 import PropTypes from 'prop-types';
 import {connect} from 'react-redux';
-import {Link} from 'react-router-dom';
 import Header from '../Header'
 import ServiceListPreload from './service-list-preload'
 import getListOfServices from '../../actions/getListOfServices'
 import axios from 'axios'
-
-import emulateGetServices from './list-of-services';
+import {ServiceCollection} from '../../models'
+import ServiceList from './service-list'
 
 class App extends Component {
 	constructor(props) {
@@ -31,11 +30,16 @@ class App extends Component {
 
 	}
 
+	/*handleServiceCollectionFetchSuccess(collection){
+		let SERVICES = collection.toJSON();
+		this.setState({SERVICES: SERVICES, loading: false});
+	}*/
+
 	componentDidMount() {
 		this._asyncRequest =
-			getListOfServices()
+			ServiceCollection.fetch
 				.then(SERVICES => {
-					console.log(SERVICES)
+					console.log("GOT RESPONSE");
 					this._asyncRequest = null;
 					this.setState({SERVICES: SERVICES, loading: false});
 				});
@@ -61,35 +65,7 @@ class App extends Component {
 		return (
 			<Fragment>
 				<Header/>
-				<div className="container service-list__container">
-					<div className="row">
-						<div className="col-12">
-							<button onClick={this.testFallback.bind(this)} className="btn btn-primary">Test Fallback</button>
-						</div>
-					</div>
-					<div className="row">
-						{SERVICES.map((service, index) => {
-							let cols;
-							service.type === 'small' ? (cols = 4) : (cols = 12);
-							return (
-								<div key={index} className={`col-md-${cols}`}>
-									<div className="card">
-										<div className="card-body">
-											<h5 className="card-title">{service.name}</h5>
-											<p className="card-text">{service.description}</p>
-											<Link
-												ref={e => (this.el = e)}
-												to={`/services/${service.id}`}
-												className="btn btn-primary text-light">
-												More
-											</Link>
-										</div>
-									</div>
-								</div>
-							);
-						})}
-					</div>
-				</div>
+				<ServiceList SERVICES={SERVICES} testFallback={this.testFallback.bind(this)}/>
 			</Fragment>
 		);
 	}
