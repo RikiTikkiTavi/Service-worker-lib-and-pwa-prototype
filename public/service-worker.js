@@ -9,6 +9,14 @@ PROBLEM: How to change content in cache on its change in server
 NOW: No dynamic caching when online
 */
 
+/*
+При вызове АПИ мы получим контент который был обновлен с времени, которое мы укажем.
+Следовательно стратегия:
+1) На установке сервис воркера кэшировать весь API и статику, сохранить текущий timestamp
+2) При каждой загрузке приложения ИЛИ при устаревании кэша на 10 минут ->
+   делать запрос к апи с предидущим timestamp и обновлять кэш.
+*/
+
 //TODO: Fetch params from cache or json file
 const doCache = true;
 const cacheImages = false;
@@ -70,10 +78,13 @@ self.addEventListener('install', event => {
 						});
 
 						// 3) Cache static css, images, js
+						/*If we want some url to work offline after page reload or by going direct to url
+						  -> must cache it here. Example: /services/1*/
 						console.log("CACHING STATIC...");
 						const urlsToCache = [
 							'/',
 							'/services',
+							'/services/1',
 							'/service-worker.js',
 							assets['main.js'],
 							'/manifest.json',

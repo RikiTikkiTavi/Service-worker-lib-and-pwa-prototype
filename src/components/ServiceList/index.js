@@ -6,7 +6,7 @@ import Header from '../Header'
 import ServiceListPreload from './service-list-preload'
 import getListOfServices from '../../actions/getListOfServices'
 import axios from 'axios'
-import {ServiceCollection} from '../../models'
+import NewServiceCollection, {newServiceCollection} from '../../models'
 import ServiceList from './service-list'
 
 class App extends Component {
@@ -30,25 +30,25 @@ class App extends Component {
 
 	}
 
-	/*handleServiceCollectionFetchSuccess(collection){
+	handleServiceCollectionFetchSuccess(collection){
 		let SERVICES = collection.toJSON();
 		this.setState({SERVICES: SERVICES, loading: false});
-	}*/
-
-	componentDidMount() {
-		this._asyncRequest =
-			ServiceCollection.fetch
-				.then(SERVICES => {
-					console.log("GOT RESPONSE");
-					this._asyncRequest = null;
-					this.setState({SERVICES: SERVICES, loading: false});
-				});
 	}
 
-	componentWillUnmount() {
-		if (this._asyncRequest) {
-			this._asyncRequest.cancel();
-		}
+	handleServiceCollectionFetchError(collection, response, options){
+		console.warn("COLLECTION", collection);
+		console.warn("RESPONSE", response);
+		console.warn("OPTIONS", options);
+		alert("Can't load content. This page is not available.")
+	}
+
+	componentDidMount() {
+		const ServiceCollection = newServiceCollection();
+		ServiceCollection.fetch({
+			success: (collection) => this.handleServiceCollectionFetchSuccess(collection),
+			error: (collection, response, options) =>
+				this.handleServiceCollectionFetchError(collection, response, options),
+		})
 	}
 
 	render() {
