@@ -200,8 +200,8 @@ self.addEventListener('fetch', event => {
 
 		// If server is available
 		if (serverResponse !== undefined) {
-			// Cache server response if cache is old
-			if(isCacheOld){
+			// Cache server response if cache is old OR header
+			if(isCacheOld || isHeaderValueTrue(serverResponse, "need-to-cache-text")){
 				await caches.open(CACHE_NAME).then(cache => {
 					cache.put(event.request.url, serverResponse.clone());
 				});
