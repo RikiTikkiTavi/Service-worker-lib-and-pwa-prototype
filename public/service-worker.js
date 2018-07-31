@@ -10,11 +10,11 @@ NOW: No dynamic caching when online
 */
 
 /*
-При вызове АПИ мы получим контент который был обновлен с времени, которое мы укажем.
-Следовательно стратегия:
-1) На установке сервис воркера кэшировать весь API и статику, сохранить текущий timestamp
-2) При каждой загрузке приложения ИЛИ при устаревании кэша на 10 минут ->
-   делать запрос к апи с предидущим timestamp и обновлять кэш.
+On API call we get content that was updated since the time we specify in request OR 0 -> all content.
+Strategy:
+1) On service worker install we cache all API and static, save current timestamp
+2) On each App load OR if cache is older then 10min ->
+   do API request with timestamp of latest caching.
 */
 
 //TODO: Fetch params from cache or json file
@@ -37,6 +37,10 @@ self.addEventListener('activate', event => {
 		)
 	);
 });
+
+function isHeaderValueTrue(response, headerName){
+	return response.headers.get(headerName) === "1";
+}
 
 // This triggers when user starts the app
 self.addEventListener('install', event => {
@@ -62,10 +66,12 @@ self.addEventListener('install', event => {
 							// Cache fetched apiRequestGetServices
 							console.log("CACHING API...");
 							const responseRawClone = responseRaw.clone();
-							cache.put(apiRequestGetServices, responseRawClone);
-
-							// 2) If image caching enabled
-							if (cacheImages) {
+							// cache if need-to-cache-text:
+							if(isHeaderValueTrue(responseRawClone, "need-to-cache-text")){
+								cache.put(apiRequestGetServices, responseRawClone);
+							}
+							// 2) cache if need-to-cache-images
+							if (isHeaderValueTrue(responseRawClone, "need-to-cache-images")) {
 								console.log("CACHING IMAGES...");
 								responseRaw.json()
 									.then(response => {
@@ -84,7 +90,6 @@ self.addEventListener('install', event => {
 						const urlsToCache = [
 							'/',
 							'/services',
-							'/services/1',
 							'/service-worker.js',
 							assets['main.js'],
 							'/manifest.json',
@@ -92,6 +97,10 @@ self.addEventListener('install', event => {
 							'/content/images/dummy.jpg'
 						];
 						cache.addAll(urlsToCache);
+
+						/*Save current timestamp*/
+						const currentTimestamp = Math.round((new Date()).getTime() / 1000);
+						cache.put("/get_cache_timestamp", new Response(currentTimestamp))
 					});
 				});
 			})
@@ -103,8 +112,27 @@ self.addEventListener('install', event => {
 self.addEventListener('fetch', event => {
 	event.respondWith(async function () {
 
-		// Handle images caching logic when user makes request
+		let isCacheOld = false;
 
+		// Check if cache is old
+		const currentTimestamp = Math.round((new Date()).getTime() / 1000);
+		let cacheTimestamp;
+		caches.match('/get_cache_timestamp')
+			.then((cacheTimestampResponse)=> {
+				cacheTimestampResponse.text().then(cacheTimestampText => {
+					cacheTimestamp = cacheTimestampText;
+				})
+			});
+		if(cacheTimestamp !== undefined){
+			const timeDiff = currentTimestamp - cacheTimestamp;
+			if(timeDiff < 600){
+				alert("CACHE IS OLDER THEN 10min");
+				isCacheOld = true
+			}
+		}
+		// End Check if cache is old
+
+		// Handle images caching logic when user makes request
 		if (event.request.destination === 'image') {
 
 			// Try to get the response from a cache.
@@ -147,18 +175,22 @@ self.addEventListener('fetch', event => {
 				return cachedResponse;
 			}
 		}
-
 		// End image caching logic
 
-		// Try to get the response from a cache.
-		const cachedResponse = await caches.match(event.request);
+		var cachedResponse;
 
-		if (cachedResponse !== undefined) {
-			console.log("RETURNING CACHED RES");
-			return cachedResponse;
+		// Try to get the response from a cache, if it is not old
+		if(!isCacheOld){
+			// Try to get the response from a cache
+			cachedResponse = await caches.match(event.request);
+
+			if (cachedResponse !== undefined) {
+				console.log("RETURNING CACHED RES");
+				return cachedResponse;
+			}
 		}
 
-		// Try to get the response from a server.
+		// Try to get the response from a server if cache is old or undefined.
 		let serverResponse;
 		try {
 			serverResponse = await fetch(event.request)
@@ -168,11 +200,20 @@ self.addEventListener('fetch', event => {
 
 		// If server is available
 		if (serverResponse !== undefined) {
-			// Cache server response
-			/*await caches.open(CACHE_NAME).then(cache => {
-				cache.put(event.request.url, serverResponse.clone());
-			});*/
+			// Cache server response if cache is old
+			if(isCacheOld){
+				await caches.open(CACHE_NAME).then(cache => {
+					cache.put(event.request.url, serverResponse.clone());
+				});
+			}
 			return serverResponse
+		}
+
+		// Return the response from an old cache, if offline and cache is old
+		if (cachedResponse !== undefined) {
+			console.log("RETURNING CACHED RES");
+			alert("Local data is old. Connect to the internet to get fresh data");
+			return cachedResponse;
 		}
 
 		return new Response("NOT AVAILABLE OFFLINE")

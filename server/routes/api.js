@@ -23,9 +23,11 @@ router.get('/get_list_of_services', (req, res) => {
 			"size": "small",
 			"image": "/content/images/cat_2.jpg"
 		}];
+	res.set("need-to-cache-text", "1");
+	res.set("need-to-cache-images", "0");
 	setTimeout(() => {
 		res.send(list_of_services)
-	}, 2000);
+	}, 1000);
 });
 
 /* HANDLE INDEX */
