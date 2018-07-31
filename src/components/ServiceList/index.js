@@ -2,11 +2,8 @@
 import React, {Component, Fragment} from 'react';
 import PropTypes from 'prop-types';
 import {connect} from 'react-redux';
-import Header from '../Header'
 import ServiceListPreload from './service-list-preload'
-import getListOfServices from '../../actions/getListOfServices'
 import axios from 'axios'
-import NewServiceCollection, {newServiceCollection} from '../../models'
 import ServiceList from './service-list'
 
 class App extends Component {
@@ -30,49 +27,24 @@ class App extends Component {
 
 	}
 
-	handleServiceCollectionFetchSuccess(collection){
-		let SERVICES = collection.toJSON();
-		this.setState({SERVICES: SERVICES, loading: false});
-	}
-
-	handleServiceCollectionFetchError(collection, response, options){
-		console.warn("COLLECTION", collection);
-		console.warn("RESPONSE", response);
-		console.warn("OPTIONS", options);
-		alert("Can't load content. This page is not available.")
-	}
-
-	componentDidMount() {
-		const ServiceCollection = newServiceCollection();
-		ServiceCollection.fetch({
-			success: (collection) => this.handleServiceCollectionFetchSuccess(collection),
-			error: (collection, response, options) =>
-				this.handleServiceCollectionFetchError(collection, response, options),
-		})
-	}
-
 	render() {
-		if (this.state.loading) {
+		if (this.props.loading) {
 			return (
-				<Fragment>
-					<Header/>
-					<ServiceListPreload/>
-				</Fragment>
+				<ServiceListPreload/>
 			);
 		}
-		const SERVICES = this.state.SERVICES;
+		const SERVICES = this.props.services;
 
 		return (
-			<Fragment>
-				<Header/>
-				<ServiceList SERVICES={SERVICES} testFallback={this.testFallback.bind(this)}/>
-			</Fragment>
+			<ServiceList SERVICES={SERVICES} testFallback={this.testFallback.bind(this)}/>
 		);
 	}
 }
 
 App.propTypes = {
-	dispatch: PropTypes.func
+	dispatch: PropTypes.func,
+	loading: PropTypes.bool,
+	services: PropTypes.array
 };
 
 export default connect((state, props, dispatch) => ({
