@@ -36,7 +36,9 @@ class App extends Component {
 		const SERVICES = this.props.services;
 
 		return (
-			<ServiceList SERVICES={SERVICES} testFallback={this.testFallback.bind(this)}/>
+			<ServiceList SERVICES={SERVICES}
+			             testFallback={this.testFallback.bind(this)}
+			/>
 		);
 	}
 }
@@ -44,7 +46,7 @@ class App extends Component {
 App.propTypes = {
 	dispatch: PropTypes.func,
 	loading: PropTypes.bool,
-	services: PropTypes.array
+	services: PropTypes.array,
 };
 
 export default connect((state, props, dispatch) => ({

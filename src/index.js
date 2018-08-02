@@ -8,6 +8,8 @@ import store from './store';
 
 import Services from './components/ServiceList';
 import ServiceFull from './components/ServiceFull';
+import Categories from './components/CategoryList';
+import CategoryFull from './components/CategoryFull';
 import Header from './components/Header'
 
 import 'bootstrap/dist/css/bootstrap.css';
@@ -18,27 +20,42 @@ import './styles/index.css';
 import BrowserRouter from 'react-router-dom/es/Router';
 import createBrowserHistory from 'history/createBrowserHistory'
 import registerServiceWorker from './registerServiceWorker';
+
 const newHistory = createBrowserHistory();
 
-import  {newServiceCollection} from './models'
+import {newServiceCollection, newAdacApiModel} from './models'
 
 class Root extends Component {
 
 	constructor(props) {
 		super(props);
 		this.state = {
+			CATEGORIES: {},
 			SERVICES: [],
 			loading: true
 		};
 	}
 
-	handleServiceCollectionFetchSuccess(collection){
+	handleServiceCollectionFetchSuccess(collection) {
 		let SERVICES = collection.toJSON();
-		this.setState({SERVICES: SERVICES, loading: false});
+		this.setState({SERVICES: SERVICES});
 	}
 
-	handleServiceCollectionFetchError(collection, response, options){
+	handleServiceCollectionFetchError(collection, response, options) {
 		console.warn("COLLECTION", collection);
+		console.warn("RESPONSE", response);
+		console.warn("OPTIONS", options);
+		alert("Can't load content. This page is not available.")
+	}
+
+	handleAdacApiModelFetchSuccess(model) {
+		let AdacApiModelJSON = model.toJSON();
+		let categories = AdacApiModelJSON.categories;
+		this.setState({categories: categories, loading: false});
+	}
+
+	handleAdacApiModelFetchError(model, response, options) {
+		console.warn("MODEL", model);
 		console.warn("RESPONSE", response);
 		console.warn("OPTIONS", options);
 		alert("Can't load content. This page is not available.")
@@ -50,11 +67,20 @@ class Root extends Component {
 			success: (collection) => this.handleServiceCollectionFetchSuccess(collection),
 			error: (collection, response, options) =>
 				this.handleServiceCollectionFetchError(collection, response, options),
+		});
+		const AdacApiModel = newAdacApiModel();
+		AdacApiModel.fetch({
+			headers: {
+				'Authorization': 'Basic cnNtOnJzbTIwMTc='
+			},
+			success: (model) => this.handleAdacApiModelFetchSuccess(model),
+			error: (model, response, options) =>
+				this.handleAdacApiModelFetchError(model, response, options),
 		})
 	}
 
 	render() {
-		const {loading, SERVICES} = this.state;
+		const {loading, SERVICES, categories} = this.state;
 		return (
 			<Provider store={store}>
 				<BrowserRouter history={newHistory}>
@@ -62,11 +88,34 @@ class Root extends Component {
 						<Header/>
 						<Route exact={true}
 						       path="/services"
-						       render={() => <Services loading={loading} services={SERVICES}/>}
+						       render={() => <Services loading={loading}
+						                               services={SERVICES}
+						       />}
 						/>
 						<Route exact={true}
 						       path="/services/:id"
-						       render={(props) => <ServiceFull {...props} loading={loading} services={SERVICES}/>}
+						       render={(props) => <ServiceFull {...props}
+						                                       loading={loading}
+						                                       services={SERVICES}
+						                                       categories={CATEGORIES}
+						       />}
+						/>
+						<Route exact={true}
+						       path="/categories"
+						       render={
+							       () => <Categories loading={loading}
+							                         categories={categories}
+							       />
+						       }
+						/>
+						<Route exact={true}
+						       path="/categories/:id"
+						       render={
+							       (props) => <CategoryFull {...props}
+							                           loading={loading}
+							                           categories={categories}
+							       />
+						       }
 						/>
 					</Fragment>
 				</BrowserRouter>
@@ -77,4 +126,17 @@ class Root extends Component {
 
 ReactDOM.render(<Root/>, document.getElementById('root'));
 
-registerServiceWorker();
+registerServiceWorker()
+
+function displayNotification() {
+	if (Notification.permission == 'granted') {
+		navigator.serviceWorker.getRegistration().then(function(reg) {
+			reg.showNotification('Notification Permission granted');
+		});
+	}
+}
+
+Notification.requestPermission(function(status) {
+	console.log('Notification permission status:', status);
+	displayNotification()
+});

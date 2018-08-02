@@ -38,7 +38,7 @@ self.addEventListener('activate', event => {
 	);
 });
 
-function isHeaderValueTrue(response, headerName){
+function isHeaderValueTrue(response, headerName) {
 	return response.headers.get(headerName) === "1";
 }
 
@@ -54,7 +54,7 @@ self.addEventListener('install', event => {
 						/*
 						Here we can build an array of urls that we need to cache.
 						1) Fetch each request we need to cache.
-						2) if cacheImages: For each fetched request -> fetch its image if exists
+						2) check in headers if need to cache text, images -> put in cache if true
 						3) Fetch static css and images
 						*/
 
@@ -67,7 +67,7 @@ self.addEventListener('install', event => {
 							console.log("CACHING API...");
 							const responseRawClone = responseRaw.clone();
 							// cache if need-to-cache-text:
-							if(isHeaderValueTrue(responseRawClone, "need-to-cache-text")){
+							if (isHeaderValueTrue(responseRawClone, "need-to-cache-text")) {
 								cache.put(apiRequestGetServices, responseRawClone);
 							}
 							// 2) cache if need-to-cache-images
@@ -83,6 +83,47 @@ self.addEventListener('install', event => {
 							}
 						});
 
+						const apiRequestAdac = 'https://pa.adac.rsm-stage.de/api/contents/bjoern@hempel.li/updates/contents.json?confirm=0&firstupdate=1&last_update=0&token=80efdb358e43b56b15a9af74bcdca3b8b595eac7f1fd47aca0b01dfa005c91d0';
+						const apiRequestAdacHeaders = new Headers(
+							{"Authorization": "Basic cnNtOnJzbTIwMTc="}
+						);
+						var apiRequestAdacParams = {
+							headers: apiRequestAdacHeaders
+						};
+						fetch(apiRequestAdac, apiRequestAdacParams).then(responseRaw => {
+
+							// Cache fetched apiRequestGetServices
+							console.log("CACHING API...");
+							const responseRawClone = responseRaw.clone();
+							cache.put(apiRequestAdac, responseRawClone);
+
+							// Cache images
+							console.log("CACHING IMAGES...");
+							responseRaw.json()
+								.then(response => {
+									const categories = response.categories;
+									for(id in categories){
+										const category = categories[id];
+										const imgReq = 'https://pa.adac.rsm-stage.de/'+category.image;
+										const imgBgReq = 'https://pa.adac.rsm-stage.de/'+category.image_bg;
+										let apiRequestAdacParamsImages = {...apiRequestAdac, mode: 'no-cors'}
+										fetch(imgReq, apiRequestAdacParamsImages)
+											.then(responseRaw => {
+												const responseRawClone = responseRaw.clone();
+												if (isHeaderValueTrue(responseRawClone, "need-to-cache-image")){
+													cache.put(imgReq, responseRawClone);
+												}
+												// Temporary, we don't have need-to-cache-image param in Headers
+												cache.put(imgReq, responseRawClone);
+											})
+									}
+								});
+
+							// cache if need-to-cache-text:
+							if (isHeaderValueTrue(responseRawClone, "need-to-cache-text")) {
+								cache.put(apiRequestAdac, responseRawClone);
+							}
+						});
 						// 3) Cache static css, images, js
 						/*If we want some url to work offline after page reload or by going direct to url
 						  -> must cache it here. Example: /services/1*/
@@ -90,6 +131,7 @@ self.addEventListener('install', event => {
 						const urlsToCache = [
 							'/',
 							'/services',
+							'/categories',
 							'/service-worker.js',
 							assets['main.js'],
 							'/manifest.json',
@@ -118,14 +160,14 @@ self.addEventListener('fetch', event => {
 		const currentTimestamp = Math.round((new Date()).getTime() / 1000);
 		let cacheTimestamp;
 		caches.match('/get_cache_timestamp')
-			.then((cacheTimestampResponse)=> {
+			.then((cacheTimestampResponse) => {
 				cacheTimestampResponse.text().then(cacheTimestampText => {
 					cacheTimestamp = cacheTimestampText;
 				})
 			});
-		if(cacheTimestamp !== undefined){
+		if (cacheTimestamp !== undefined) {
 			const timeDiff = currentTimestamp - cacheTimestamp;
-			if(timeDiff < 600){
+			if (timeDiff < 600) {
 				alert("CACHE IS OLDER THEN 10min");
 				isCacheOld = true
 			}
@@ -137,6 +179,8 @@ self.addEventListener('fetch', event => {
 
 			// Try to get the response from a cache.
 			const cachedResponse = await caches.match(event.request);
+
+			console.log(event.request);
 
 			// If no cache try to make request
 			if (cachedResponse === undefined) {
@@ -153,6 +197,7 @@ self.addEventListener('fetch', event => {
 				if (serverResponse !== undefined) {
 
 					//If cacheImage is enabled, cache response
+					//Here is possible to check header
 					if (cacheImages) {
 						await caches.open(CACHE_NAME).then(cache => {
 							cache.put(event.request.url, serverResponse.clone());
@@ -177,13 +222,14 @@ self.addEventListener('fetch', event => {
 		}
 		// End image caching logic
 
+		console.log(event.request);
+
 		var cachedResponse;
 
 		// Try to get the response from a cache, if it is not old
-		if(!isCacheOld){
+		if (!isCacheOld) {
 			// Try to get the response from a cache
-			cachedResponse = await caches.match(event.request);
-
+			cachedResponse = await caches.match(event.request, {ignoreVary: true});
 			if (cachedResponse !== undefined) {
 				console.log("RETURNING CACHED RES");
 				return cachedResponse;
@@ -200,8 +246,9 @@ self.addEventListener('fetch', event => {
 
 		// If server is available
 		if (serverResponse !== undefined) {
-			// Cache server response if cache is old OR header
-			if(isCacheOld || isHeaderValueTrue(serverResponse, "need-to-cache-text")){
+			// On this point we know, that fresh cache for this req doesn't exist,
+			// so we cache it if it is so in Header
+			if (isHeaderValueTrue(serverResponse, "need-to-cache-text")) {
 				await caches.open(CACHE_NAME).then(cache => {
 					cache.put(event.request.url, serverResponse.clone());
 				});
