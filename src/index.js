@@ -126,17 +126,28 @@ class Root extends Component {
 
 ReactDOM.render(<Root/>, document.getElementById('root'));
 
-registerServiceWorker()
+registerServiceWorker();
 
-function displayNotification() {
+function displayNotification(message) {
 	if (Notification.permission == 'granted') {
 		navigator.serviceWorker.getRegistration().then(function(reg) {
-			reg.showNotification('Notification Permission granted');
+			reg.showNotification(message);
 		});
 	}
 }
 
 Notification.requestPermission(function(status) {
 	console.log('Notification permission status:', status);
-	displayNotification()
 });
+
+if ('storage' in navigator && 'estimate' in navigator.storage) {
+	navigator.storage.estimate().then(({usage, quota}) => {
+		console.log(`Using ${usage} out of ${quota} bytes.`);
+		displayNotification(`Using ${usage} out of ${quota} bytes.`);
+	}).catch(error => {
+		console.error('Loading storage estimate failed:');
+		console.log(error.stack);
+	});
+} else {
+	console.error('navigator.storage.estimate API unavailable.');
+}
