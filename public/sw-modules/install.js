@@ -12,6 +12,7 @@ function aelInstall(cacheName, doCache){
 						response.json().then(assets => {
 
 							/*
+							[OLD STRATEGY]
 							Here we can build an array of urls that we need to cache.
 							1) Fetch each request we need to cache.
 							2) check in headers if need to cache text, images -> put in cache if true
@@ -24,7 +25,6 @@ function aelInstall(cacheName, doCache){
 							fetch(apiRequestGetServices).then(responseRaw => {
 
 								// Cache fetched apiRequestGetServices
-								console.log("CACHING API...");
 								const responseRawClone = responseRaw.clone();
 								// cache if need-to-cache-text:
 								if (isHeaderValueTrue(responseRawClone, "need-to-cache-text")) {
@@ -43,17 +43,20 @@ function aelInstall(cacheName, doCache){
 								}
 							});
 
-							const apiRequestAdac = 'https://pa.adac.rsm-stage.de/api/contents/bjoern@hempel.li/updates/contents.json?confirm=0&firstupdate=1&last_update=0&token=80efdb358e43b56b15a9af74bcdca3b8b595eac7f1fd47aca0b01dfa005c91d0';
-							const apiRequestAdacHeaders = new Headers(
-								{"Authorization": "Basic cnNtOnJzbTIwMTc="}
-							);
-							var apiRequestAdacParams = {
-								headers: apiRequestAdacHeaders
-							};
+							/*
+							* [NEW CACHE STRATEGY]
+							* 1) Cache static files (priority 0)
+							* 2) Save current timestamp -> so we can update cache, when it is older then X
+							* 3) Cache api:
+							*    1. Fetch api, cache response
+							*    2. In api response we have cache-priority param for each file,
+							*       so we sort an array of files by priority from high to low.
+							*    3. Iterate files-array:
+							*       if available-space > file-size: fetch file
+							*       if need-to-cache-file header is true: put file to cache
+							* */
 
-							// 1) First cache static files
-
-							console.log("CACHING STATIC...");
+							// 1) Cache static files (priority 0)
 							const urlsToCache = [
 								'/',
 								'/services',
@@ -66,37 +69,41 @@ function aelInstall(cacheName, doCache){
 							];
 							cache.addAll(urlsToCache);
 
-							/*Save current timestamp*/
+							// 2) Save current timestamp -> so we can update cache, when it is older then X
 							const currentTimestamp = Math.round((new Date()).getTime() / 1000);
 							cache.put("/get_cache_timestamp", new Response(currentTimestamp));
 
-							//2) Cache texts and then cache other files in the available space;
+							// 3) Cache api:
+							const apiRequestAdac = 'https://pa.adac.rsm-stage.de/api/contents/bjoern@hempel.li/updates/contents.json?confirm=0&firstupdate=1&last_update=0&token=80efdb358e43b56b15a9af74bcdca3b8b595eac7f1fd47aca0b01dfa005c91d0';
+							const apiRequestAdacHeaders = new Headers(
+								{"Authorization": "Basic cnNtOnJzbTIwMTc="}
+							);
+							var apiRequestAdacParams = {
+								headers: apiRequestAdacHeaders
+							};
 
+							// 3.1. Fetch api, cache response
 							fetch(apiRequestAdac, apiRequestAdacParams).then(responseRaw => {
 
 								// Cache fetched apiRequestAdac
-								console.log("CACHING API...");
 								const responseRawClone = responseRaw.clone();
 								cache.put(apiRequestAdac, responseRawClone);
 
-								/*
-								* 1) Sort files by its cache-priority
-								* 2) Start caching.
-								*    if space available -> cache file
-								* */
-
+								// 3.2. In api response we have cache-priority param for each file,
+							  //      so we sort an array of files by priority from high to low.
 								responseRaw.json()
 									.then(response => {
 										const files = response.files;
 
 										// We can sort an array of files here
 
-										// 2)
+										// 3.3. Iterate files-array:
+									  //      if available-space > file-size: fetch file
+										//      if need-to-cache-file header is true: put file to cache
 										if ('storage' in navigator && 'estimate' in navigator.storage) {
 											navigator.storage.estimate().then(({usage, quota}) => {
 												let freeSpace = quota-usage;
 												let apiRequestAdacParamsImages = {...apiRequestAdac, mode: 'no-cors'};
-												console.log(freeSpace);
 												for(id in files){
 													file = files[id];
 													const fileReq = 'https://pa.adac.rsm-stage.de/'+file.path;
@@ -131,5 +138,8 @@ function aelInstall(cacheName, doCache){
 				})
 			);
 		}
+		Notification.requestPermission(function(status) {
+			console.log('Notification permission status:', status);
+		});
 	});
 }

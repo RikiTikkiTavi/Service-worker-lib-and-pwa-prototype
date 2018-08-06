@@ -75,10 +75,14 @@ function aelFetch(cacheName, cacheImages){
 				// Try to get the response from a cache
 				cachedResponse = await caches.match(event.request, {ignoreVary: true});
 				if (cachedResponse !== undefined) {
-					console.log("RETURNING CACHED RES");
 					return cachedResponse;
 				}
 			}
+
+			// ON that point we can make request to server with timestamp we have cached
+			// -> in response become what is changed
+			// -> replace changed files in cache
+			// return response
 
 			// Try to get the response from a server if cache is old or undefined.
 			let serverResponse;
@@ -92,7 +96,7 @@ function aelFetch(cacheName, cacheImages){
 			if (serverResponse !== undefined) {
 				// On this point we know, that fresh cache for this req doesn't exist,
 				// so we cache it if it is so in Header
-				if (isHeaderValueTrue(serverResponse, "need-to-cache-text")) {
+				if (isHeaderValueTrue(serverResponse, "need-to-cache-file")) {
 					await caches.open(cacheName).then(cache => {
 						cache.put(event.request.url, serverResponse.clone());
 					});
@@ -102,7 +106,6 @@ function aelFetch(cacheName, cacheImages){
 
 			// Return the response from an old cache, if offline and cache is old
 			if (cachedResponse !== undefined) {
-				console.log("RETURNING CACHED RES");
 				alert("Local data is old. Connect to the internet to get fresh data");
 				return cachedResponse;
 			}

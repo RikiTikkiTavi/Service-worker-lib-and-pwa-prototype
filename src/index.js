@@ -97,7 +97,6 @@ class Root extends Component {
 						       render={(props) => <ServiceFull {...props}
 						                                       loading={loading}
 						                                       services={SERVICES}
-						                                       categories={CATEGORIES}
 						       />}
 						/>
 						<Route exact={true}
@@ -135,10 +134,6 @@ function displayNotification(message) {
 		});
 	}
 }
-
-Notification.requestPermission(function(status) {
-	console.log('Notification permission status:', status);
-});
 
 if ('storage' in navigator && 'estimate' in navigator.storage) {
 	navigator.storage.estimate().then(({usage, quota}) => {
