@@ -50,6 +50,7 @@ class Root extends Component {
 
 	handleAdacApiModelFetchSuccess(model) {
 		let AdacApiModelJSON = model.toJSON();
+		console.log("INDEX", AdacApiModelJSON);
 		let categories = AdacApiModelJSON.categories;
 		this.setState({categories: categories, loading: false});
 	}
@@ -134,6 +135,10 @@ function displayNotification(message) {
 		});
 	}
 }
+
+Notification.requestPermission(function(status) {
+	console.log('Notification permission status:', status);
+});
 
 if ('storage' in navigator && 'estimate' in navigator.storage) {
 	navigator.storage.estimate().then(({usage, quota}) => {

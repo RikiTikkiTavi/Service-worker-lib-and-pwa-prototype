@@ -57,6 +57,7 @@ function aelFetch(cacheName, cacheImages){
 					}
 
 					// If server not available return dummy image
+					// Отдавать также статус ("IMAGE_NOT_AVAILABLE")
 					const dummyImageResponse = caches.match('/content/images/dummy.jpg');
 					return dummyImageResponse
 				}
@@ -111,6 +112,7 @@ function aelFetch(cacheName, cacheImages){
 			}
 
 			return new Response("NOT AVAILABLE OFFLINE")
+			//TODO Тут можно вручную перенаправлять detail-page, что-бы решить проблему перезагрузки
 		}());
 	});
 }

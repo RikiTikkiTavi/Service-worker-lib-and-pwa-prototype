@@ -2,7 +2,39 @@ function isHeaderValueTrue(response, headerName) {
 	return response.headers.get(headerName) === "1";
 }
 
-function aelInstall(cacheName, doCache){
+function bSortFilesByPriorAndRmNoCache(filesArr) {
+	let len = filesArr.length;
+	let swapped;
+	do {
+		swapped = false;
+		for (let i = 0; i < len; i++) {
+			if (filesArr[i].needToCache === 0) {
+				filesArr.splice(i, 1);
+				len--;
+			}
+			if (i === len - 1) {
+				break
+			}
+			if (filesArr[i].cachePriority > filesArr[i + 1].cachePriority) {
+				let tmp = filesArr[i];
+				filesArr[i] = filesArr[i + 1];
+				filesArr[i + 1] = tmp;
+				swapped = true;
+			}
+		}
+	} while (swapped);
+	return filesArr;
+}
+
+function tempAddParamsToFiles(filesArr) {
+	for (let i = 0; i < filesArr.length; i++) {
+			filesArr[i].cachePriority = Math.floor(Math.random() * (5));
+			filesArr[i].needToCache = Math.round(Math.random());
+	}
+	return filesArr;
+}
+
+function aelInstall(cacheName, doCache) {
 	self.addEventListener('install', event => {
 		console.log('installing service worker');
 		if (doCache) {
@@ -49,8 +81,9 @@ function aelInstall(cacheName, doCache){
 							* 2) Save current timestamp -> so we can update cache, when it is older then X
 							* 3) Cache api:
 							*    1. Fetch api, cache response
-							*    2. In api response we have cache-priority param for each file,
-							*       so we sort an array of files by priority from high to low.
+							*    2. In api response we have cache-priority and need-to-cache param for each file,
+							*       so we sort an array of files by priority from high to low and remove
+							*       files we don't need to cache
 							*    3. Iterate files-array:
 							*       if available-space > file-size: fetch file
 							*       if need-to-cache-file header is true: put file to cache
@@ -90,35 +123,40 @@ function aelInstall(cacheName, doCache){
 								cache.put(apiRequestAdac, responseRawClone);
 
 								// 3.2. In api response we have cache-priority param for each file,
-							  //      so we sort an array of files by priority from high to low.
+								//      so we sort an array of files by priority from high to low.
 								responseRaw.json()
 									.then(response => {
 										const files = response.files;
 
-										// We can sort an array of files here
+										// Transform files OBJ into array for sorting and further usage.
+										let filesArr = Object.values(response.files);
+
+										// Temporary add some params to files
+										filesArr = tempAddParamsToFiles(filesArr);
+
+										/* 2. In api response we have cachePriority and needToCache param for each file,
+										 * so we sort an array of files by priority from high to low and remove
+							       * files we don't need to cache */
+										filesArr = bSortFilesByPriorAndRmNoCache(filesArr);
 
 										// 3.3. Iterate files-array:
-									  //      if available-space > file-size: fetch file
+										//      if available-space > file-size: fetch file
 										//      if need-to-cache-file header is true: put file to cache
 										if ('storage' in navigator && 'estimate' in navigator.storage) {
 											navigator.storage.estimate().then(({usage, quota}) => {
-												let freeSpace = quota-usage;
+												let freeSpace = quota - usage;
+												// Temporary cross-origin request
 												let apiRequestAdacParamsImages = {...apiRequestAdac, mode: 'no-cors'};
-												for(id in files){
-													file = files[id];
-													const fileReq = 'https://pa.adac.rsm-stage.de/'+file.path;
-													if(file.size<=freeSpace){
+												for (let file in filesArr) {
+													const fileReq = 'https://pa.adac.rsm-stage.de/' + file.path;
+													if (file.size <= freeSpace) {
 														fetch(fileReq, apiRequestAdacParamsImages)
 															.then(responseRaw => {
 																const responseRawClone = responseRaw.clone();
-																if (isHeaderValueTrue(responseRawClone, "need-to-cache-file")){
-																	cache.put(fileReq, responseRawClone);
-																}
-																// Temporary, we don't have need-to-cache-file param in Header
-																console.log(file.path);
+																// We can check here file headers if needed
 																cache.put(fileReq, responseRawClone);
 															});
-														freeSpace-=file.size;
+														freeSpace -= file.size;
 													} else {
 														console.log("Not enough space for file");
 														break;
@@ -138,8 +176,5 @@ function aelInstall(cacheName, doCache){
 				})
 			);
 		}
-		Notification.requestPermission(function(status) {
-			console.log('Notification permission status:', status);
-		});
 	});
 }

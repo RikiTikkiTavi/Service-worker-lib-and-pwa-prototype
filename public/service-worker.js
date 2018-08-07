@@ -30,15 +30,3 @@ aelInstall(CACHE_NAME, doCache);
 
 // Here we intercept request and serve up the matching files
 aelFetch(CACHE_NAME, cacheImages);
-
-self.addEventListener('push', function(event) {
-	console.log('[Service Worker] Push Received.');
-	console.log(`[Service Worker] Push had this data: "${event.data.text()}"`);
-
-	const title = 'Push Codelab';
-	const options = {
-		body: 'Yay it works.',
-	};
-
-	event.waitUntil(self.registration.showNotification(title, options));
-});
