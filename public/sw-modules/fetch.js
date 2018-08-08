@@ -111,7 +111,8 @@ function aelFetch(cacheName, cacheImages){
 				return cachedResponse;
 			}
 
-			return new Response("NOT AVAILABLE OFFLINE")
+			const cachedIndex = await caches.match('/', {ignoreVary: true});
+			return cachedIndex;
 			//TODO Тут можно вручную перенаправлять detail-page, что-бы решить проблему перезагрузки
 		}());
 	});

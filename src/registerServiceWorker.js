@@ -9,6 +9,32 @@
 // To learn more about the benefits of this model, read https://goo.gl/KwvDNy.
 // This link also includes instructions on opting out of this behavior.
 
+function nofificationHandle(){
+	Notification.requestPermission(function(status) {
+		console.log('Notification permission status:', status);
+	});
+
+	function displayNotification(message) {
+		if (Notification.permission == 'granted') {
+			navigator.serviceWorker.getRegistration().then(function(reg) {
+				reg.showNotification(message);
+			});
+		}
+	}
+
+	if ('storage' in navigator && 'estimate' in navigator.storage) {
+		navigator.storage.estimate().then(({usage, quota}) => {
+			console.log(`Using ${usage} out of ${quota} bytes.`);
+			displayNotification(`Using ${usage} out of ${quota} bytes.`);
+		}).catch(error => {
+			console.error('Loading storage estimate failed:');
+			console.log(error.stack);
+		});
+	} else {
+		console.error('navigator.storage.estimate API unavailable.');
+	}
+}
+
 const isLocalhost = Boolean(
 	window.location.hostname === 'localhost' ||
 	// [::1] is the IPv6 localhost address.
@@ -60,6 +86,7 @@ function registerValidSW(swUrl) {
 				const installingWorker = registration.installing;
 				installingWorker.onstatechange = () => {
 					if (installingWorker.state === 'installed') {
+						nofificationHandle();
 						if (navigator.serviceWorker.controller) {
 							// At this point, the old content will have been purged and
 							// the fresh content will have been added to the cache.
