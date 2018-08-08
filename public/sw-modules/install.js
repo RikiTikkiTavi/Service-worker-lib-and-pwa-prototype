@@ -12,7 +12,7 @@ function bSortFilesByPriorAndRmNoCache(filesArr) {
 				filesArr.splice(i, 1);
 				len--;
 			}
-			if (i === len - 1) {
+			if (i === len - 1 || i===len) {
 				break
 			}
 			if (filesArr[i].cachePriority > filesArr[i + 1].cachePriority) {
@@ -60,7 +60,6 @@ function aelInstall(cacheName, doCache) {
 							// 1) Cache static files (priority 0)
 							const urlsToCache = [
 								'/',
-								'/categories',
 								'/service-worker.js',
 								assets['main.js'],
 								'/manifest.json',
@@ -93,7 +92,6 @@ function aelInstall(cacheName, doCache) {
 								//      so we sort an array of files by priority from high to low.
 								responseRaw.json()
 									.then(response => {
-										const files = response.files;
 
 										// Transform files OBJ into array for sorting and further usage.
 										let filesArr = Object.values(response.files);
