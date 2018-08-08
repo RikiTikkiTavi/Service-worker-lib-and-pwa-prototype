@@ -63,12 +63,12 @@ class Root extends Component {
 	}
 
 	componentDidMount() {
-		const ServiceCollection = newServiceCollection();
+/*		const ServiceCollection = newServiceCollection();
 		ServiceCollection.fetch({
 			success: (collection) => this.handleServiceCollectionFetchSuccess(collection),
 			error: (collection, response, options) =>
 				this.handleServiceCollectionFetchError(collection, response, options),
-		});
+		});*/
 		const AdacApiModel = newAdacApiModel();
 		AdacApiModel.fetch({
 			headers: {
@@ -87,7 +87,7 @@ class Root extends Component {
 				<BrowserRouter history={newHistory}>
 					<Fragment>
 						<Header/>
-						<Route exact={true}
+						{/*<Route exact={true}
 						       path="/services"
 						       render={() => <Services loading={loading}
 						                               services={SERVICES}
@@ -99,7 +99,7 @@ class Root extends Component {
 						                                       loading={loading}
 						                                       services={SERVICES}
 						       />}
-						/>
+						/>*/}
 						<Route exact={true}
 						       path="/categories"
 						       render={

@@ -3,16 +3,19 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 const CleanWebpackPlugin = require('clean-webpack-plugin');
 const FriendlyErrorsWebpackPlugin = require('friendly-errors-webpack-plugin');
 const ManifestPlugin = require('webpack-manifest-plugin');
+const OfflinePlugin = require('offline-plugin');
 
 const outputDirectory = 'dist';
 module.exports = {
-	entry: ['babel-polyfill', './src/index.js'],
+	entry: [
+		'babel-polyfill',
+		'./src/index.js',
+	],
 	output: {
 		path: path.join(__dirname, outputDirectory),
 		filename: 'bundle.js',
 		publicPath: '/'
 	},
-	devtool: 'source-map',
 	module: {
 		rules: [
 			{
@@ -44,12 +47,7 @@ module.exports = {
 		contentBase: path.join(__dirname, 'public'),
 		host: '0.0.0.0',
 		port: 3000,
-		open: false,
 		historyApiFallback: true,
-		proxy: {
-			'/api/*': 'http://localhost:8080',
-			'/images/*': 'http://localhost:8080'
-		}
 	},
 	plugins: [
 		new CleanWebpackPlugin([outputDirectory]),
@@ -60,6 +58,6 @@ module.exports = {
 		new FriendlyErrorsWebpackPlugin(),
 		new ManifestPlugin({
 			fileName: 'asset-manifest.json'
-		})
+		}),
 	]
 };

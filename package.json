@@ -26,6 +26,7 @@
     "jquery": "^3.3.1",
     "materialize-css": "^1.0.0-rc.2",
     "nodemon": "^1.18.3",
+    "offline-plugin": "^5.0.5",
     "popper.js": "^1.14.3",
     "prop-types": "latest",
     "react": "^16.4.1",
@@ -46,8 +47,7 @@
     "webpack-manifest-plugin": "^2.0.3"
   },
   "scripts": {
-    "client": "webpack-dev-server --no-info --mode development --devtool inline-source-map --hot",
-    "server": "nodemon --exec babel-node server/app.js",
-    "dev": "concurrently \"npm run server\" \"npm run client\""
+    "client": "webpack-dev-server --no-info --mode development --devtool inline-source-map --inline=false",
+    "dev": "npm run client"
   }
 }

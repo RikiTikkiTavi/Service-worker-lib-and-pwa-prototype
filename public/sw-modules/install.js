@@ -44,38 +44,6 @@ function aelInstall(cacheName, doCache) {
 						response.json().then(assets => {
 
 							/*
-							[OLD STRATEGY]
-							Here we can build an array of urls that we need to cache.
-							1) Fetch each request we need to cache.
-							2) check in headers if need to cache text, images -> put in cache if true
-							3) Fetch static css and images
-							*/
-
-							const apiRequestGetServices = '/api/get_list_of_services';
-
-							// 1)
-							fetch(apiRequestGetServices).then(responseRaw => {
-
-								// Cache fetched apiRequestGetServices
-								const responseRawClone = responseRaw.clone();
-								// cache if need-to-cache-text:
-								if (isHeaderValueTrue(responseRawClone, "need-to-cache-text")) {
-									cache.put(apiRequestGetServices, responseRawClone);
-								}
-								// 2) cache if need-to-cache-images
-								if (isHeaderValueTrue(responseRawClone, "need-to-cache-images")) {
-									console.log("CACHING IMAGES...");
-									responseRaw.json()
-										.then(response => {
-											const services = response;
-											services.forEach((service, i) => {
-												cache.add(service.image)
-											})
-										})
-								}
-							});
-
-							/*
 							* [NEW CACHE STRATEGY]
 							* 1) Cache static files (priority 0)
 							* 2) Save current timestamp -> so we can update cache, when it is older then X
@@ -92,7 +60,6 @@ function aelInstall(cacheName, doCache) {
 							// 1) Cache static files (priority 0)
 							const urlsToCache = [
 								'/',
-								'/services',
 								'/categories',
 								'/service-worker.js',
 								assets['main.js'],
@@ -138,6 +105,7 @@ function aelInstall(cacheName, doCache) {
 										 * so we sort an array of files by priority from high to low and remove
 							       * files we don't need to cache */
 										filesArr = bSortFilesByPriorAndRmNoCache(filesArr);
+										console.log("FILES ARRAY AFTER SORTING", filesArr);
 
 										// 3.3. Iterate files-array:
 										//      if available-space > file-size: fetch file
@@ -147,7 +115,8 @@ function aelInstall(cacheName, doCache) {
 												let freeSpace = quota - usage;
 												// Temporary cross-origin request
 												let apiRequestAdacParamsImages = {...apiRequestAdac, mode: 'no-cors'};
-												for (let file in filesArr) {
+												for (let i in filesArr) {
+													let file = filesArr[i];
 													const fileReq = 'https://pa.adac.rsm-stage.de/' + file.path;
 													if (file.size <= freeSpace) {
 														fetch(fileReq, apiRequestAdacParamsImages)
