@@ -1,13 +1,9 @@
-self.importScripts('./sw-modules/activate.js', './sw-modules/install.js', './sw-modules/fetch.js');
-
-/*
-We can set params in cache or some json file before calling registerServiceWorker() (index.js)
-*/
-
-/*
-PROBLEM: How to change content in cache on its change in server
-NOW: No dynamic caching when online
-*/
+/* eslint-disable no-undef */
+self.importScripts(
+  './sw-modules/activate.js',
+  './sw-modules/install.js',
+  './sw-modules/fetch.js'
+);
 
 /*
 On API call we get content that was updated since the time we specify in request OR 0 -> all content.
@@ -17,7 +13,7 @@ Strategy:
    do API request with timestamp of latest caching.
 */
 
-//TODO: Fetch params from cache or json file
+// TODO: Fetch params from cache or json file
 const doCache = true;
 const cacheImages = false;
 const CACHE_NAME = 'project-prototype-app-cache';

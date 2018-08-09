@@ -42,24 +42,21 @@ function aelFetch(cacheName, cacheImages){
 					// If server is available
 					if (serverResponse !== undefined) {
 
+						// If we want to cache images request ...
 						//If cacheImage is enabled, cache response
-						//Here is possible to check header
-						if (cacheImages) {
+						// Here is possible to check header
+						/*if (cacheImages) {
 							await caches.open(cacheName).then(cache => {
 								cache.put(event.request.url, serverResponse.clone());
 							});
-						}
+						}*/
 
-						//If not enabled just return server response
-						else {
-							return serverResponse
-						}
+						return serverResponse
 					}
 
 					// If server not available return dummy image
 					// Отдавать также статус ("IMAGE_NOT_AVAILABLE")
-					const dummyImageResponse = caches.match('/content/images/dummy.jpg');
-					return dummyImageResponse
+					return caches.match('/content/images/dummy.jpg');
 				}
 
 				//Else return cached image
