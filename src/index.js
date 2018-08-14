@@ -127,3 +127,16 @@ class Root extends Component {
 ReactDOM.render(<Root/>, document.getElementById('root'));
 
 registerServiceWorker();
+
+function displayNotification(message, options) {
+	if (Notification.permission === 'granted') {
+		navigator.serviceWorker.getRegistration().then(function(reg) {
+			reg.showNotification(message, options);
+		});
+	}
+}
+
+navigator.serviceWorker.addEventListener('message', event => {
+	console.log("RECEIVED MESSAGE", event.data);
+	displayNotification(event.data.msg);
+});

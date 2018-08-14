@@ -27,7 +27,7 @@ function bSortFilesByPriorAndRmNoCache(filesArr) {
   return filesArr;
 }
 
-function tempAddParamsToFiles(filesArr) {
+function tempAddPARAMSToFiles(filesArr) {
   for (let i = 0; i < filesArr.length; i++) {
     filesArr[i].cachePriority = Math.floor(Math.random() * 5);
     filesArr[i].needToCache = Math.round(Math.random());
@@ -35,10 +35,10 @@ function tempAddParamsToFiles(filesArr) {
   return filesArr;
 }
 
-function aelInstall(cacheName, doCache, params) {
+function aelInstall(cacheName, PARAMS) {
   self.addEventListener('install', event => {
     console.log('installing service worker');
-    if (doCache) {
+    if (PARAMS.doCache) {
       event.waitUntil(
         caches.open(CACHE_NAME).then(cache => {
           fetch('/asset-manifest.json').then(response => {
@@ -85,12 +85,12 @@ function aelInstall(cacheName, doCache, params) {
               const apiRequestAdacHeaders = new Headers({
                 Authorization: 'Basic cnNtOnJzbTIwMTc='
               });
-              const apiRequestAdacParams = {
+              const apiRequestAdacPARAMS = {
                 headers: apiRequestAdacHeaders
               };
 
               // 3.1. Fetch api, cache response
-              fetch(apiRequestAdac, apiRequestAdacParams).then(responseRaw => {
+              fetch(apiRequestAdac, apiRequestAdacPARAMS).then(responseRaw => {
                 // Cache fetched apiRequestAdac
                 const responseRawClone = responseRaw.clone();
                 cache.put(apiRequestAdac, responseRawClone);
@@ -101,8 +101,8 @@ function aelInstall(cacheName, doCache, params) {
                   // Transform files OBJ into array for sorting and further usage.
                   let filesArr = Object.values(response.files);
 
-                  // Temporary add some params to files
-                  filesArr = tempAddParamsToFiles(filesArr);
+                  // Temporary add some PARAMS to files
+                  filesArr = tempAddPARAMSToFiles(filesArr);
 
                   /* 2. In api response we have cachePriority and needToCache param for each file,
 										 * so we sort an array of files by priority from high to low and remove
@@ -122,7 +122,7 @@ function aelInstall(cacheName, doCache, params) {
                       .then(({ usage, quota }) => {
                         let freeSpace = quota - usage;
                         // Temporary cross-origin request
-                        const apiRequestAdacParamsImages = {
+                        const apiRequestAdacPARAMSImages = {
                           ...apiRequestAdac,
                           mode: 'no-cors'
                         };
@@ -132,7 +132,7 @@ function aelInstall(cacheName, doCache, params) {
                             file.path
                           }`;
                           if (file.size <= freeSpace) {
-                            fetch(fileReq, apiRequestAdacParamsImages).then(
+                            fetch(fileReq, apiRequestAdacPARAMSImages).then(
                               responseRaw => {
                                 const responseRawClone = responseRaw.clone();
                                 // We can check here file headers if needed

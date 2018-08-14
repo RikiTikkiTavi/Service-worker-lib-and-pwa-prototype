@@ -1,8 +1,9 @@
 /* eslint-disable no-undef */
 self.importScripts(
-  './sw-modules/activate.js',
-  './sw-modules/install.js',
-  './sw-modules/fetch.js'
+	'./sw-modules/activate.js',
+	'./sw-modules/install.js',
+	'./sw-modules/fetch.js',
+	'./service-worker.params.js'
 );
 
 /*
@@ -14,15 +15,33 @@ Strategy:
 */
 
 // TODO: Fetch params from cache or json file
-const doCache = true;
-const cacheImages = false;
 const CACHE_NAME = 'project-prototype-app-cache';
 
 // Delete old caches
 aelActivate(CACHE_NAME);
 
 // This triggers when user starts the app
-aelInstall(CACHE_NAME, doCache);
+aelInstall(CACHE_NAME, params);
 
 // Here we intercept request and serve up the matching files
-aelFetch(CACHE_NAME, cacheImages);
+aelFetch(CACHE_NAME, params);
+
+setInterval(function () {
+		updateCachesIfOld(params)
+			.then((updateResult) => {
+				console.log("UPDATE RESULT", updateResult);
+				let options = {
+					actions: [{action: "refresh", title: "Refresh"}]
+				};
+				if (updateResult === 1) {
+					sendMessage(params.refreshSuccessMessage)
+				}
+				if (updateResult === 0) {
+					sendMessage(params.refreshFailMessage)
+				}
+				if (updateResult === 404) {
+					sendMessage("User is offline. Show message, that caches might be old")
+				}
+			})
+	}, 600000
+);

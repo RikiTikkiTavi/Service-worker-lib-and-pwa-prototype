@@ -9,30 +9,17 @@
 // To learn more about the benefits of this model, read https://goo.gl/KwvDNy.
 // This link also includes instructions on opting out of this behavior.
 
-function nofificationHandle(){
+function requestNotificationsPermission(){
 	Notification.requestPermission(function(status) {
 		console.log('Notification permission status:', status);
 	});
+}
 
-	function displayNotification(message) {
-		if (Notification.permission == 'granted') {
-			navigator.serviceWorker.getRegistration().then(function(reg) {
-				reg.showNotification(message);
-			});
-		}
-	}
-
-	if ('storage' in navigator && 'estimate' in navigator.storage) {
-		navigator.storage.estimate().then(({usage, quota}) => {
-			console.log(`Using ${usage} out of ${quota} bytes.`);
-			displayNotification(`Using ${usage} out of ${quota} bytes.`);
-		}).catch(error => {
-			console.error('Loading storage estimate failed:');
-			console.log(error.stack);
-		});
-	} else {
-		console.error('navigator.storage.estimate API unavailable.');
-	}
+function addMessagesEventListener(sw){
+	sw.addEventListener('message', event => {
+		console.log("NEW MESSAGE", event.data);
+		displayNotification(event.data.msg, {});
+	});
 }
 
 const isLocalhost = Boolean(
@@ -58,22 +45,8 @@ export default function register() {
 
 		window.addEventListener('load', () => {
 			const swUrl = `/service-worker.js`;
-
-			if (isLocalhost) {
-				// This is running on localhost. Lets check if a service worker still exists or not.
-				checkValidServiceWorker(swUrl);
-
-				// Add some additional logging to localhost, pointing developers to the
-				// service worker/PWA documentation.
-				navigator.serviceWorker.ready.then(() => {
-					console.log(
-						'This web app is being served network-first by a service worker.'
-					);
-				});
-			} else {
-				// Is not local host. Just register service worker
-				registerValidSW(swUrl);
-			}
+			checkValidServiceWorker(swUrl);
+			registerValidSW(swUrl);
 		});
 	}
 }
@@ -86,7 +59,8 @@ function registerValidSW(swUrl) {
 				const installingWorker = registration.installing;
 				installingWorker.onstatechange = () => {
 					if (installingWorker.state === 'installed') {
-						nofificationHandle();
+						requestNotificationsPermission();
+						addMessagesEventListener(navigator.serviceWorker);
 						if (navigator.serviceWorker.controller) {
 							// At this point, the old content will have been purged and
 							// the fresh content will have been added to the cache.
@@ -99,6 +73,11 @@ function registerValidSW(swUrl) {
 							// "Content is cached for offline use." message.
 							console.log('Content is cached for offline use.');
 						}
+						return new Promise(function(resolve, reject) {
+
+							resolve(navigator.serviceWorker)
+
+						});
 					}
 				};
 			};
