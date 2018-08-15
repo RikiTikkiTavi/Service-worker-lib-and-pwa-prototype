@@ -1,5 +1,4 @@
 // TODO: Optimize caches.open
-// TODO: Optimize apiRequestAdac
 // TODO: On update delete files with low priority to download files with high prior.
 
 function aelFetch() {

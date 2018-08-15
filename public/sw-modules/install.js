@@ -3,13 +3,17 @@ function isHeaderValueTrue(response, headerName) {
 	return response.headers.get(headerName) === '1';
 }
 
-function bSortFilesByPriorAndRmNoCache(filesArr) {
+/*
+*
+*
+* */
+function bSortFilesByPriorAndRmNoCache(filesArr, doRemoveWhereNoNeedToCache) {
 	let len = filesArr.length;
 	let swapped;
 	do {
 		swapped = false;
 		for (let i = 0; i < len; i++) {
-			if (filesArr[i].needToCache === 0) {
+			if (filesArr[i].needToCache === 0 && doRemoveWhereNoNeedToCache) {
 				filesArr.splice(i, 1);
 				len--;
 			}

@@ -41,7 +41,7 @@ async function checkCachesThroughApi(cacheTimestamp) {
 
 	// API Request with last update timestamp
 	const apiRequestAdac =
-		'https://pa.adac.rsm-stage.de/api/contents/bjoern@hempel.li/updates/contents.json?confirm=0firstupdate=1&last_update='+
+		'https://pa.adac.rsm-stage.de/api/contents/bjoern@hempel.li/updates/contents.json?confirm=0firstupdate=1&last_update=' +
 		cacheTimestamp + '&token=80efdb358e43b56b15a9af74bcdca3b8b595eac7f1fd47aca0b01dfa005c91d0';
 
 	const apiRequestAdacHeaders = new Headers({
@@ -102,7 +102,7 @@ async function getFreeSpace() {
 	return freeSpace;
 }
 
-async function downloadAndCacheRequest(requestUrl, size, priority, freeSpace) {
+async function downloadAndCacheRequest(requestUrl, size, cachePriority, freeSpace) {
 	if (size <= freeSpace) {
 		fetch(requestUrl, apiRequestAdacParamsImages).then(
 			responseRaw => {
@@ -111,9 +111,12 @@ async function downloadAndCacheRequest(requestUrl, size, priority, freeSpace) {
 				cache.put(requestUrl, responseRawClone);
 			}
 		);
-		freeSpace-=size;
+		freeSpace -= size;
 	} else {
 		// TODO: On update delete files with low priority to download files with high prior.
+		if (cachePriority !== undefined) {
+			// DELETE file with priority lower then this file has
+		}
 		console.error(PARAMS.fileSpaceError);
 	}
 	return freeSpace
@@ -123,21 +126,33 @@ async function downloadUpdateAndCacheFiles(cachedResponse, response, PARAMS) {
 
 	let freeSpace = await getFreeSpace();
 	console.log("downloadUpdateAndCacheFiles() -> freeSpace", freeSpace);
-	for (let id in response.files) {
-		const file = response.files[id];
+
+	// TEMPORARY add params to files
+	let filesArr = tempAddPARAMSToFiles(response.files);
+
+	// Sort them and remove no-cache files
+	filesArr = bSortFilesByPriorAndRmNoCache(filesArr, false);
+
+	for (let id in filesArr) {
+		const file = filesArr[id];
 		const cachedFile = cachedResponse.files[id];
 		const fileReq = `https://pa.adac.rsm-stage.de/${
 			file.path
 			}`;
 		// If file exists in cache
 		if (cachedResponse.files.hasOwnProperty(id)) {
+
 			// If file in cache has same path and size
 			if (file.path === cachedFile.path && file.size === cachedFile.size) {
 				cachedResponse.files[id] = file;
+				if(!file.needToCache){
+					await deleteCachedRequest(cachedFile.path);
+				}
 			}
 			// If file in cache has NOT the same path and size
 			else {
 				// If file needs to be cached
+				// Delete old file
 				await deleteCachedRequest(cachedFile.path);
 				cachedResponse.files[id] = file;
 				if (file.needToCache) {
@@ -147,9 +162,9 @@ async function downloadUpdateAndCacheFiles(cachedResponse, response, PARAMS) {
 		}
 		// If file NOT exists in cache
 		else {
+			cachedResponse.files[id] = file;
 			if (file.needToCache) {
-				cachedResponse.files[id] = file;
-				freeSpace = await downloadAndCacheRequest(fileReq, file.size, file.priority, freeSpace)
+				freeSpace = await downloadAndCacheRequest(fileReq, file.size, file.cachePriority, freeSpace)
 			}
 		}
 	}
@@ -173,12 +188,13 @@ async function updateCachesIfOld(PARAMS) {
 		console.log('updateCachesIfOld() -> response', response);
 
 		if (response !== 404) {
-			if (isCacheUpToDate===false) {
+			if (isCacheUpToDate === false) {
 				// setCurrentTimestamp(PARAMS);
 				await updateCaches(response, headers, PARAMS);
 				return 1
 			}
-		} if(response===404) {
+		}
+		if (response === 404) {
 			// User is offline. Show message, that caches might be old
 			console.log("User is offline. Show message, that caches might be old");
 			return 404;
