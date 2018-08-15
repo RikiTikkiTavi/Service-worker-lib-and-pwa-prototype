@@ -1,9 +1,12 @@
+console.info("SERVICE WORKER", "IMPORTING SCRIPTS");
 /* eslint-disable no-undef */
 self.importScripts(
+	'./service-worker.params.js',
+	'./sw-modules/service-worker.lib.js',
 	'./sw-modules/activate.js',
 	'./sw-modules/install.js',
 	'./sw-modules/fetch.js',
-	'./service-worker.params.js'
+	'./sw-modules/update.js',
 );
 
 /*
@@ -14,34 +17,18 @@ Strategy:
    do API request with timestamp of latest caching.
 */
 
-// TODO: Fetch params from cache or json file
 const CACHE_NAME = 'project-prototype-app-cache';
+console.info("SERVICE WORKER", "CALLING aelActivate");
 
-// Delete old caches
-aelActivate(CACHE_NAME);
+// Delete old unused caches if exist
+aelActivate();
 
+console.info("SERVICE WORKER", "CALLING aelInstall");
 // This triggers when user starts the app
-aelInstall(CACHE_NAME, params);
+aelInstall();
 
+console.info("SERVICE WORKER", "CALLING aelFetch");
 // Here we intercept request and serve up the matching files
-aelFetch(CACHE_NAME, params);
+aelFetch();
 
-setInterval(function () {
-		updateCachesIfOld(params)
-			.then((updateResult) => {
-				console.log("UPDATE RESULT", updateResult);
-				let options = {
-					actions: [{action: "refresh", title: "Refresh"}]
-				};
-				if (updateResult === 1) {
-					sendMessage(params.refreshSuccessMessage)
-				}
-				if (updateResult === 0) {
-					sendMessage(params.refreshFailMessage)
-				}
-				if (updateResult === 404) {
-					sendMessage("User is offline. Show message, that caches might be old")
-				}
-			})
-	}, 600000
-);
+handleUpdate();

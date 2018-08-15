@@ -13,10 +13,11 @@ var PARAMS = {
 														 // necessary files is cached on sw install)
 	enableImagesFetchCaching: false,
 	refreshSuccessMessage: "Update available, please refresh",
-	refreshFailMessage: "Update failed, please connect to the internet to update caches",
+	updateInterval: 600000, // Interval of update-request
 
-	// Errors handling functions
-	fileSpaceError: console.log('Not enough space for file'),
-	storageEstimateLoadError: console.log('Not enough space for file'),
-	storageApiUnavailableError: console.error('Loading storage estimate failed:'),
+	// Errors
+	fileSpaceError: 'Not enough space for file',
+	storageEstimateLoadError: 'Loading storage estimate failed',
+	storageApiUnavailableError: 'Storage Api Unavailable',
+	refreshFailMessage: "Update failed, please connect to the internet to update caches",
 };

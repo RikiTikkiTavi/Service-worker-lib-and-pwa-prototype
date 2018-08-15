@@ -1,7 +1,7 @@
-function aelActivate(cacheName){
+function aelActivate(){
 	self.addEventListener('activate', event => {
 		console.log('ACTIVATE EVENT');
-		const currentCachelist = cacheName;
+		const currentCachelist = PARAMS.cacheName;
 		event.waitUntil(
 			caches.keys().then(keyList =>
 				Promise.all(
