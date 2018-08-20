@@ -19,6 +19,7 @@ const apiRequestAdacParamsImages = {
 	mode: 'no-cors'
 };
 
+
 async function checkCachesThroughCachedTimestamp(PARAMS) {
 	let isCacheOld = false;
 	const currentTimestamp = Math.round((new Date()).getTime() / 1000);
@@ -34,6 +35,7 @@ async function checkCachesThroughCachedTimestamp(PARAMS) {
 	}
 	return {isCacheOld, cacheTimestamp}
 }
+
 
 async function checkCachesThroughApi(cacheTimestamp) {
 
@@ -70,11 +72,13 @@ async function checkCachesThroughApi(cacheTimestamp) {
 
 }
 
+
 async function deleteCachedRequest(requestUrl) {
 	caches.open(CACHE_NAME).then(cache => {
 		cache.delete(requestUrl).then(result => result)
 	})
 }
+
 
 /**
  * @function getFreeSpace
@@ -102,6 +106,7 @@ async function getFreeSpace() {
 	return freeSpace;
 }
 
+
 async function downloadAndCacheRequest(requestUrl, size, cachePriority, freeSpace) {
 	if (size <= freeSpace) {
 		fetch(requestUrl, apiRequestAdacParamsImages).then(
@@ -121,6 +126,7 @@ async function downloadAndCacheRequest(requestUrl, size, cachePriority, freeSpac
 	}
 	return freeSpace
 }
+
 
 async function downloadUpdateAndCacheFiles(cachedResponse, response, PARAMS) {
 
@@ -171,12 +177,14 @@ async function downloadUpdateAndCacheFiles(cachedResponse, response, PARAMS) {
 	return cachedResponse.files
 }
 
+
 function setCurrentTimestamp(PARAMS) {
 	const currentTimestamp = Math.round(new Date().getTime() / 1000);
 	caches.open(PARAMS.cacheName).then(cache => {
 		cache.put('/get_cache_timestamp', new Response(currentTimestamp));
 	});
 }
+
 
 async function updateCachesIfOld(PARAMS) {
 	console.log('updateCachesIfOld()');
@@ -203,6 +211,7 @@ async function updateCachesIfOld(PARAMS) {
 	return 0;
 }
 
+
 function sendMessage(msg) {
 	self.clients.matchAll().then(function (clients) {
 		clients.forEach(function (client) {
@@ -212,6 +221,21 @@ function sendMessage(msg) {
 		});
 	});
 }
+
+
+function handleUpdateResult(updateResult){
+	console.log("UPDATE RESULT", updateResult);
+	if (updateResult === 1) {
+		sendMessage(PARAMS.refreshSuccessMessage)
+	}
+	if (updateResult === 0) {
+		console.log("Content is up to date")
+	}
+	if (updateResult === 404) {
+		sendMessage(PARAMS.refreshFailMessage)
+	}
+}
+
 
 /**
  * @function updateCaches
@@ -249,4 +273,90 @@ async function updateCaches(response, headers, PARAMS) {
 		cache.put('/get_cache_timestamp', new Response(currentTimestamp));
 		cache.put(apiRequestAdac, cachedResponseRawNew);
 	});
+}
+
+
+async function tryFetchFromServer(request){
+	let serverResponse;
+	try {
+		serverResponse = await fetch(request)
+	} catch (e) {
+		console.log(e)
+	}
+	return serverResponse;
+}
+
+
+async function handleFetchServerResponse(serverResponse, param) {
+	if (
+		isHeaderValueTrue(serverResponse, "need-to-cache-file")
+		&& PARAMS[param]
+	) {
+		await caches.open(PARAMS.cacheName).then(cache => {
+			cache.put(event.request.url, serverResponse.clone());
+		});
+	}
+}
+
+
+// Handle images caching logic when user makes request
+async function handleFetchImage(event){
+
+	// Try to get the response from a cache.
+	const cachedResponse = await caches.match(event.request);
+
+	// If no cache try to make request
+	if (cachedResponse === undefined) {
+
+		// Check if server is available
+		let serverResponse = await tryFetchFromServer(event.request);
+
+		// If server is available
+		if (serverResponse !== undefined) {
+
+			/*
+			* Cache image on each server response if:
+			* 1) need-to-cache-file header
+			* 2) Images fetch caching is enabled */
+
+			await handleFetchServerResponse(serverResponse, 'enableGeneralImagesCaching');
+
+			return serverResponse
+		}
+
+		// If server not available return dummy image
+		// Отдавать также статус ("IMAGE_NOT_AVAILABLE")
+		return caches.match('/content/images/dummy.jpg');
+	}
+
+	//Else return cached image
+	else {
+		return cachedResponse;
+	}
+}
+
+
+// Handle other content caching logic when user makes request
+async function handleFetchOther(event){
+	var cachedResponse;
+	cachedResponse = await caches.match(event.request, {ignoreVary: true});
+	if (cachedResponse !== undefined) {
+		return cachedResponse;
+	}
+
+	// Try to get the response from a server if cacheResponse is undefined.
+	let serverResponse = tryFetchFromServer(event.request);
+
+	// If server is available
+	if (serverResponse !== undefined) {
+		// On this point we know, that fresh cache for this req doesn't exist,
+		/*
+		* Here we cache Response, if (fresh cache for this req doesn't exist):
+		* 1) Header param
+		* 2) General fetch caching is enabled */
+		await handleFetchServerResponse(serverResponse, 'enableGeneralFetchCaching');
+		return serverResponse
+	}
+
+	return await caches.match('/', {ignoreVary: true});
 }

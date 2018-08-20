@@ -31,4 +31,4 @@ console.info("SERVICE WORKER", "CALLING aelFetch");
 // Here we intercept request and serve up the matching files
 aelFetch();
 
-handleUpdate();
+handleUpdate_setInterval();

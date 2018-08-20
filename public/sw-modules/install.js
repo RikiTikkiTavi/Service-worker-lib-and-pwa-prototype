@@ -92,8 +92,21 @@ function aelInstall() {
 							const apiRequestAdacHeaders = new Headers({
 								Authorization: 'Basic cnNtOnJzbTIwMTc='
 							});
+
 							const apiRequestAdacPARAMS = {
 								headers: apiRequestAdacHeaders
+							};
+
+							// Temporary cross-origin req
+							const apiRequestAdacImagesHeaders = new Headers({
+								Authorization: 'Basic cnNtOnJzbTIwMTc=',
+								"Content-Type": "image/jpg",
+
+							});
+
+							const apiRequestAdacPARAMSImages = {
+								headers: apiRequestAdacImagesHeaders,
+								mode: 'no-cors'
 							};
 
 							// 3.1. Fetch api, cache response
@@ -129,11 +142,12 @@ function aelInstall() {
 											.estimate()
 											.then(({usage, quota}) => {
 												let freeSpace = quota - usage;
-												// Temporary cross-origin request
+												/*// Temporary cross-origin request
+
 												const apiRequestAdacPARAMSImages = {
 													...apiRequestAdac,
-													mode: 'no-cors'
-												};
+													mode: 'no-cors',
+												};*/
 												for (const i in filesArr) {
 													const file = filesArr[i];
 													const fileReq = `https://pa.adac.rsm-stage.de/${

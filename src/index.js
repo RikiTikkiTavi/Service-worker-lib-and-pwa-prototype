@@ -11,6 +11,7 @@ import ServiceFull from './components/ServiceFull';
 import Categories from './components/CategoryList';
 import CategoryFull from './components/CategoryFull';
 import Header from './components/Header'
+import UpdateButton from './components/UpdateButton'
 
 import 'bootstrap/dist/css/bootstrap.css';
 import 'jquery/dist/jquery.min';
@@ -87,6 +88,9 @@ class Root extends Component {
 				<BrowserRouter history={newHistory}>
 					<Fragment>
 						<Header/>
+						<div className='container'>
+							<UpdateButton/>
+						</div>
 						{/*<Route exact={true}
 						       path="/services"
 						       render={() => <Services loading={loading}
@@ -140,3 +144,9 @@ navigator.serviceWorker.addEventListener('message', event => {
 	console.log("RECEIVED MESSAGE", event.data);
 	displayNotification(event.data.msg);
 });
+
+newHistory.listen((location, action) => {
+	// Trigger cache update check
+	fetch('/update-caches');
+});
+
