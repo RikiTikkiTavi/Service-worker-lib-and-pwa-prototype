@@ -65,10 +65,6 @@ async function aelInstall() {
 					//      if need-to-cache-file header is true: put file to cache
 
 					downloadAndCacheFiles(filesArr, freeSpace, 'https://pa.adac.rsm-stage.de/', cache)
-						.then(result => {
-							console.log("RESULT", result);
-							result ? sendMessage(PARAMS.installationCompleteMsg) : sendMessage(PARAMS.installationFailMsg);
-						});
 				})
 			);
 		}

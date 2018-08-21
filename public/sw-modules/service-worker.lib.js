@@ -29,11 +29,10 @@ async function checkCachesThroughCachedTimestamp(PARAMS) {
 	const currentTimestamp = Math.round((new Date()).getTime() / 1000);
 	let cacheTimestampResponse = await caches.match('/get_cache_timestamp');
 	let cacheTimestamp = await cacheTimestampResponse.text();
-	console.log("CACHE TIMESTAMP", cacheTimestamp);
 	if (cacheTimestamp !== undefined) {
 		const timeDiff = currentTimestamp - cacheTimestamp;
 		if (timeDiff > PARAMS.cacheOldenTime) {
-			console.log("CACHE IS OLDER THEN ", PARAMS.cacheOldenTime, " Difference: ", timeDiff);
+			console.log("CACHE IS OLDER THEN: ", PARAMS.cacheOldenTime, " Difference: ", timeDiff);
 			isCacheOld = true
 		}
 	}
@@ -380,7 +379,7 @@ async function handleFetchOther(event) {
 	}
 
 	// Try to get the response from a server if cacheResponse is undefined.
-	let serverResponse = tryFetchFromServer(event.request);
+	let serverResponse = await tryFetchFromServer(event.request);
 
 	// If server is available
 	if (serverResponse !== undefined) {
@@ -389,6 +388,7 @@ async function handleFetchOther(event) {
 		* Here we cache Response, if (fresh cache for this req doesn't exist):
 		* 1) Header param
 		* 2) General fetch caching is enabled */
+		console.log("SR1",serverResponse);
 		await handleFetchServerResponse(serverResponse, 'enableGeneralFetchCaching');
 		return serverResponse
 	}
@@ -445,7 +445,6 @@ async function getStaticUrls(assetManifestUrl, staticFilesArray) {
 	let assets = await assetsResponse.json();
 	for (let id in staticFilesArray) {
 		let file = staticFilesArray[id];
-		console.log(file);
 		if (assets.hasOwnProperty(file)) {
 			urlsToCache.push(assets[file])
 		} else {

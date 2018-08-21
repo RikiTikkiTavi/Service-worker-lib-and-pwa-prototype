@@ -51,7 +51,6 @@ class Root extends Component {
 
 	handleAdacApiModelFetchSuccess(model) {
 		let AdacApiModelJSON = model.toJSON();
-		console.log("INDEX", AdacApiModelJSON);
 		let categories = AdacApiModelJSON.categories;
 		this.setState({categories: categories, loading: false});
 	}
