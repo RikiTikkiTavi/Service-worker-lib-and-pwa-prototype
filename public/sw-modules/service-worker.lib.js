@@ -9,16 +9,20 @@ const apiRequestAdacHeaders = new Headers({
 	Authorization: 'Basic cnNtOnJzbTIwMTc='
 });
 
-const apiRequestAdacParams = {
+const apiRequestAdacPARAMS = {
 	headers: apiRequestAdacHeaders
 };
 
 // Temporary cross-origin req
-const apiRequestAdacParamsImages = {
-	...apiRequestAdac,
+const apiRequestAdacImagesHeaders = new Headers({
+	Authorization: 'Basic cnNtOnJzbTIwMTc=',
+	"Content-Type": "image/jpg",
+});
+
+const apiRequestAdacPARAMSImages = {
+	headers: apiRequestAdacImagesHeaders,
 	mode: 'no-cors'
 };
-
 
 async function checkCachesThroughCachedTimestamp(PARAMS) {
 	let isCacheOld = false;
@@ -107,13 +111,14 @@ async function getFreeSpace() {
 }
 
 
-async function downloadAndCacheRequest(requestUrl, size, cachePriority, freeSpace) {
+async function downloadAndCacheRequest(requestUrl, size, cachePriority, freeSpace, requestParams = {}, cache) {
+	let responseRaw;
 	if (size <= freeSpace) {
-		fetch(requestUrl, apiRequestAdacParamsImages).then(
-			responseRaw => {
-				const responseRawClone = responseRaw.clone();
+		await fetch(requestUrl, requestParams).then(
+			rRaw => {
+				responseRaw = rRaw.clone();
 				// We can check here file headers if needed
-				cache.put(requestUrl, responseRawClone);
+				cache.put(requestUrl, rRaw);
 			}
 		);
 		freeSpace -= size;
@@ -124,9 +129,26 @@ async function downloadAndCacheRequest(requestUrl, size, cachePriority, freeSpac
 		}
 		console.error(PARAMS.fileSpaceError);
 	}
-	return freeSpace
+	return {freeSpace, responseRaw}
 }
 
+async function downloadAndCacheFiles(filesArr, freeSpace, baseUrl, cache) {
+	try {
+		for (const i in filesArr) {
+			const file = filesArr[i];
+			const fileReq = baseUrl + file.path;
+			(
+				{freeSpace} = await downloadAndCacheRequest(
+					fileReq, file.size, undefined, freeSpace, apiRequestAdacPARAMSImages, cache
+				)
+			)
+		}
+		return true;
+	} catch (e) {
+		console.error(e);
+		return false;
+	}
+}
 
 async function downloadUpdateAndCacheFiles(cachedResponse, response, PARAMS) {
 
@@ -151,7 +173,7 @@ async function downloadUpdateAndCacheFiles(cachedResponse, response, PARAMS) {
 			// If file in cache has same path and size
 			if (file.path === cachedFile.path && file.size === cachedFile.size) {
 				cachedResponse.files[id] = file;
-				if(!file.needToCache){
+				if (!file.needToCache) {
 					await deleteCachedRequest(cachedFile.path);
 				}
 			}
@@ -162,7 +184,11 @@ async function downloadUpdateAndCacheFiles(cachedResponse, response, PARAMS) {
 				await deleteCachedRequest(cachedFile.path);
 				cachedResponse.files[id] = file;
 				if (file.needToCache) {
-					freeSpace = await downloadAndCacheRequest(fileReq, file.size, file.priority, freeSpace);
+					(
+						{freeSpace} = await downloadAndCacheRequest(
+							fileReq, file.size, file.priority, freeSpace, apiRequestAdacPARAMSImages, cache
+						)
+					)
 				}
 			}
 		}
@@ -170,7 +196,11 @@ async function downloadUpdateAndCacheFiles(cachedResponse, response, PARAMS) {
 		else {
 			cachedResponse.files[id] = file;
 			if (file.needToCache) {
-				freeSpace = await downloadAndCacheRequest(fileReq, file.size, file.cachePriority, freeSpace)
+				(
+					{freeSpace} = await downloadAndCacheRequest(
+						fileReq, file.size, file.priority, freeSpace, apiRequestAdacPARAMSImages, cache
+					)
+				)
 			}
 		}
 	}
@@ -223,7 +253,12 @@ function sendMessage(msg) {
 }
 
 
-function handleUpdateResult(updateResult){
+function isHeaderValueTrue(response, headerName) {
+	return response.headers.get(headerName) === '1';
+}
+
+
+function handleUpdateResult(updateResult) {
 	console.log("UPDATE RESULT", updateResult);
 	if (updateResult === 1) {
 		sendMessage(PARAMS.refreshSuccessMessage)
@@ -276,7 +311,7 @@ async function updateCaches(response, headers, PARAMS) {
 }
 
 
-async function tryFetchFromServer(request){
+async function tryFetchFromServer(request) {
 	let serverResponse;
 	try {
 		serverResponse = await fetch(request)
@@ -300,7 +335,7 @@ async function handleFetchServerResponse(serverResponse, param) {
 
 
 // Handle images caching logic when user makes request
-async function handleFetchImage(event){
+async function handleFetchImage(event) {
 
 	// Try to get the response from a cache.
 	const cachedResponse = await caches.match(event.request);
@@ -337,7 +372,7 @@ async function handleFetchImage(event){
 
 
 // Handle other content caching logic when user makes request
-async function handleFetchOther(event){
+async function handleFetchOther(event) {
 	var cachedResponse;
 	cachedResponse = await caches.match(event.request, {ignoreVary: true});
 	if (cachedResponse !== undefined) {
@@ -359,4 +394,63 @@ async function handleFetchOther(event){
 	}
 
 	return await caches.match('/', {ignoreVary: true});
+}
+
+function bSortFilesByPriorAndRmNoCache(filesArr, doRemoveWhereNoNeedToCache) {
+	let len = filesArr.length;
+	let swapped;
+	do {
+		swapped = false;
+		for (let i = 0; i < len; i++) {
+			if (filesArr[i].needToCache === 0 && doRemoveWhereNoNeedToCache) {
+				filesArr.splice(i, 1);
+				len--;
+			}
+			if (i === len - 1 || i === len) {
+				break;
+			}
+			if (filesArr[i].cachePriority > filesArr[i + 1].cachePriority) {
+				const tmp = filesArr[i];
+				filesArr[i] = filesArr[i + 1];
+				filesArr[i + 1] = tmp;
+				swapped = true;
+			}
+		}
+	} while (swapped);
+	return filesArr;
+}
+
+function tempAddPARAMSToFiles(filesArr) {
+	for (let i = 0; i < filesArr.length; i++) {
+		filesArr[i].cachePriority = Math.floor(Math.random() * 5);
+		filesArr[i].needToCache = Math.round(Math.random());
+	}
+	return filesArr;
+}
+
+function cacheWithAdditionalHeaders(url, headers, cache) {
+	fetch(url).then((response) => {
+		let newHeaders = new Headers(response.headers);
+		for (let h in headers) {
+			newHeaders.append(h.name, h.value)
+		}
+		response.headers = newHeaders;
+		cache.put(url, response);
+	});
+}
+
+async function getStaticUrls(assetManifestUrl, staticFilesArray) {
+	let urlsToCache = [];
+	let assetsResponse = await fetch(assetManifestUrl);
+	let assets = await assetsResponse.json();
+	for (let id in staticFilesArray) {
+		let file = staticFilesArray[id];
+		console.log(file);
+		if (assets.hasOwnProperty(file)) {
+			urlsToCache.push(assets[file])
+		} else {
+			urlsToCache.push(file)
+		}
+	}
+	return urlsToCache;
 }

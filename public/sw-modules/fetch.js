@@ -1,6 +1,5 @@
 // TODO: Optimize caches.open
 // TODO: On update delete files with low priority to download files with high prior.
-// TODO: Break fetch and install on small functions
 
 function aelFetch() {
 	self.addEventListener('fetch', event => {
