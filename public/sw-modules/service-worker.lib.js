@@ -24,22 +24,43 @@ const apiRequestAdacPARAMSImages = {
 	mode: 'no-cors'
 };
 
-async function checkCachesThroughCachedTimestamp(PARAMS) {
-	let isCacheOld = false;
+/**
+ * @param {number} cacheOldenTime - Cache olden time
+ * @returns {Promise<{isCacheOld: (boolean | undefined), cacheTimestamp: (number | undefined)}>}
+ * isCacheOld = true or false if cache successfully checked
+ * cacheTimestamp = number or If '/get_cache_timestamp' doesn't exist - undefined
+ * @description Checks if cache is old by comparing with cacheOldenTime value
+ */
+async function checkCachesThroughCachedTimestamp(cacheOldenTime) {
+	let isCacheOld;
 	const currentTimestamp = Math.round((new Date()).getTime() / 1000);
 	let cacheTimestampResponse = await caches.match('/get_cache_timestamp');
 	let cacheTimestamp = await cacheTimestampResponse.text();
 	if (cacheTimestamp !== undefined) {
 		const timeDiff = currentTimestamp - cacheTimestamp;
-		if (timeDiff > PARAMS.cacheOldenTime) {
-			console.log("CACHE IS OLDER THEN: ", PARAMS.cacheOldenTime, " Difference: ", timeDiff);
+		if (timeDiff > cacheOldenTime) {
+			console.log("CACHE IS OLDER THEN: ", cacheOldenTime, " Difference: ", timeDiff);
 			isCacheOld = true
+		} else {
+			isCacheOld = false;
 		}
 	}
 	return {isCacheOld, cacheTimestamp}
 }
 
 
+/**
+ * @param {number} cacheTimestamp - timestamp of last cache update / installation
+ * @returns {Promise<{
+ *  isCacheUpToDate: (boolean | undefined),
+ *  response: (Response | number),
+ *  headers: (Headers | undefined)}
+ * >} - isCacheUpToDate - if request failed -> is undefined;
+ *      response - Response or If request failed -> 404
+ *      headers - Headers of Response or If request failed -> undefined
+ * @description Checks if cache is old by making API request with cacheTimestamp and
+ * checking response code
+ */
 async function checkCachesThroughApi(cacheTimestamp) {
 
 	console.log('checkCachesThroughApi()');
@@ -76,17 +97,20 @@ async function checkCachesThroughApi(cacheTimestamp) {
 }
 
 
-async function deleteCachedRequest(requestUrl) {
-	caches.open(CACHE_NAME).then(cache => {
-		cache.delete(requestUrl).then(result => result)
-	})
+/**
+ * @param {string} requestUrl - url to delete
+ * @param {Cache} cache - Cache interface
+ * @returns {Promise<void>}
+ * @description Deletes cached request
+ */
+async function deleteCachedRequest(requestUrl, cache) {
+	cache.delete(requestUrl).then(result => result)
 }
 
 
 /**
- * @function getFreeSpace
+ * @returns {Promise<(number | undefined)>}
  * @description Detects free space in cache storage.
- * @returns int or undefined
  */
 async function getFreeSpace() {
 	let freeSpace;
@@ -110,6 +134,17 @@ async function getFreeSpace() {
 }
 
 
+/**
+ * @param {string} requestUrl - request url to cache
+ * @param {number} size - request size in bytes (set 0 if doc)
+ * @param {number} [cachePriority] - cache priority of this request.
+ * if no space: cached requests with lower priority will be deleted
+ * @param {number} freeSpace - available Space in cache storage
+ * @param {Object} [requestParams] - fetch params
+ * @param {Cache} cache - Cache interface
+ * @returns {Promise<{freeSpace: number, responseRaw: (Response | undefined)}>}
+ * @description Downloads and caches request if enough space
+ */
 async function downloadAndCacheRequest(requestUrl, size, cachePriority, freeSpace, requestParams = {}, cache) {
 	let responseRaw;
 	if (size <= freeSpace) {
@@ -131,6 +166,18 @@ async function downloadAndCacheRequest(requestUrl, size, cachePriority, freeSpac
 	return {freeSpace, responseRaw}
 }
 
+
+/**
+ * @param {Object[]} filesArr - array of files to cache
+ * @param {string} filesArr[].path - relative path
+ * @param {number} filesArr[].size
+ * @param {number} freeSpace - available Space in cache storage
+ * @param {string} baseUrl - base url to download file
+ * @param {Cache} cache - Cache interface
+ * @returns {Promise<boolean>} - True if all files are downloaded and cached
+ * False if error
+ * @description Downloads and caches files from array, if enough space
+ */
 async function downloadAndCacheFiles(filesArr, freeSpace, baseUrl, cache) {
 	try {
 		for (const i in filesArr) {
@@ -149,7 +196,8 @@ async function downloadAndCacheFiles(filesArr, freeSpace, baseUrl, cache) {
 	}
 }
 
-async function downloadUpdateAndCacheFiles(cachedResponse, response, PARAMS) {
+
+async function downloadUpdateAndCacheFiles(cachedResponse, response, cache) {
 
 	let freeSpace = await getFreeSpace();
 	console.log("downloadUpdateAndCacheFiles() -> freeSpace", freeSpace);
@@ -173,14 +221,14 @@ async function downloadUpdateAndCacheFiles(cachedResponse, response, PARAMS) {
 			if (file.path === cachedFile.path && file.size === cachedFile.size) {
 				cachedResponse.files[id] = file;
 				if (!file.needToCache) {
-					await deleteCachedRequest(cachedFile.path);
+					await deleteCachedRequest(cachedFile.path, cache);
 				}
 			}
 			// If file in cache has NOT the same path and size
 			else {
 				// If file needs to be cached
 				// Delete old file
-				await deleteCachedRequest(cachedFile.path);
+				await deleteCachedRequest(cachedFile.path, cache);
 				cachedResponse.files[id] = file;
 				if (file.needToCache) {
 					(
@@ -207,17 +255,15 @@ async function downloadUpdateAndCacheFiles(cachedResponse, response, PARAMS) {
 }
 
 
-function setCurrentTimestamp(PARAMS) {
+function setCurrentTimestamp(cache) {
 	const currentTimestamp = Math.round(new Date().getTime() / 1000);
-	caches.open(PARAMS.cacheName).then(cache => {
-		cache.put('/get_cache_timestamp', new Response(currentTimestamp));
-	});
+	cache.put('/get_cache_timestamp', new Response(currentTimestamp));
 }
 
 
-async function updateCachesIfOld(PARAMS) {
+async function updateCachesIfOld(cacheOldenTime, cache) {
 	console.log('updateCachesIfOld()');
-	let {isCacheOld, cacheTimestamp} = await checkCachesThroughCachedTimestamp(PARAMS);
+	let {isCacheOld, cacheTimestamp} = await checkCachesThroughCachedTimestamp(cacheOldenTime);
 	if (isCacheOld) {
 		let {isCacheUpToDate, response, headers} = await checkCachesThroughApi(cacheTimestamp);
 
@@ -227,7 +273,7 @@ async function updateCachesIfOld(PARAMS) {
 		if (response !== 404) {
 			if (isCacheUpToDate === false) {
 				// setCurrentTimestamp(PARAMS);
-				await updateCaches(response, headers, PARAMS);
+				await updateCaches(response, headers, cache);
 				return 1
 			}
 		}
@@ -275,10 +321,10 @@ function handleUpdateResult(updateResult) {
  * @function updateCaches
  * @param response: Fresh response
  * @param headers: Old headers
- * @param PARAMS
+ * @param cache: result of caches.open
  * @returns {Promise<void>}
  */
-async function updateCaches(response, headers, PARAMS) {
+async function updateCaches(response, headers, cache) {
 
 	// Get raw cache response
 	let cachedResponseRaw = await caches.match(apiRequestAdac, {ignoreVary: true});
@@ -295,7 +341,7 @@ async function updateCaches(response, headers, PARAMS) {
 	}
 
 	// Update files
-	cachedResponse.files = await downloadUpdateAndCacheFiles(cachedResponse, response);
+	cachedResponse.files = await downloadUpdateAndCacheFiles(cachedResponse, response, cache);
 
 	// Create new cache Response
 	let cachedResponseRawNew = new Response(JSON.stringify(cachedResponse), {headers: headers});
@@ -303,10 +349,8 @@ async function updateCaches(response, headers, PARAMS) {
 	// Update timestamp and update Response in caches
 	const currentTimestamp = Math.round(new Date().getTime() / 1000);
 	console.log("Setting new timestamp and updating cache");
-	caches.open(PARAMS.cacheName).then(cache => {
-		cache.put('/get_cache_timestamp', new Response(currentTimestamp));
-		cache.put(apiRequestAdac, cachedResponseRawNew);
-	});
+	cache.put('/get_cache_timestamp', new Response(currentTimestamp));
+	cache.put(apiRequestAdac, cachedResponseRawNew);
 }
 
 
@@ -321,20 +365,18 @@ async function tryFetchFromServer(request) {
 }
 
 
-async function handleFetchServerResponse(serverResponse, param) {
+async function handleFetchServerResponse(serverResponse, param, cache) {
 	if (
 		isHeaderValueTrue(serverResponse, "need-to-cache-file")
 		&& PARAMS[param]
 	) {
-		await caches.open(PARAMS.cacheName).then(cache => {
-			cache.put(event.request.url, serverResponse.clone());
-		});
+		cache.put(event.request.url, serverResponse.clone());
 	}
 }
 
 
 // Handle images caching logic when user makes request
-async function handleFetchImage(event) {
+async function handleFetchImage(event, cache) {
 
 	// Try to get the response from a cache.
 	const cachedResponse = await caches.match(event.request);
@@ -353,7 +395,7 @@ async function handleFetchImage(event) {
 			* 1) need-to-cache-file header
 			* 2) Images fetch caching is enabled */
 
-			await handleFetchServerResponse(serverResponse, 'enableGeneralImagesCaching');
+			await handleFetchServerResponse(serverResponse, 'enableGeneralImagesCaching', cache);
 
 			return serverResponse
 		}
@@ -371,7 +413,7 @@ async function handleFetchImage(event) {
 
 
 // Handle other content caching logic when user makes request
-async function handleFetchOther(event) {
+async function handleFetchOther(event, cache) {
 	var cachedResponse;
 	cachedResponse = await caches.match(event.request, {ignoreVary: true});
 	if (cachedResponse !== undefined) {
@@ -388,8 +430,8 @@ async function handleFetchOther(event) {
 		* Here we cache Response, if (fresh cache for this req doesn't exist):
 		* 1) Header param
 		* 2) General fetch caching is enabled */
-		console.log("SR1",serverResponse);
-		await handleFetchServerResponse(serverResponse, 'enableGeneralFetchCaching');
+		console.log("SR1", serverResponse);
+		await handleFetchServerResponse(serverResponse, 'enableGeneralFetchCaching', cache);
 		return serverResponse
 	}
 

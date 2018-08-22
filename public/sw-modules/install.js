@@ -31,7 +31,7 @@ async function aelInstall() {
 					cacheWithAdditionalHeaders('content/images/dummy.jpg', {name: "dummy", value: "true"}, cache);
 
 					// 2) Save current timestamp -> so we can update cache, when it is older then X
-					setCurrentTimestamp(PARAMS);
+					setCurrentTimestamp(cache);
 
 					// 3) Cache api:
 

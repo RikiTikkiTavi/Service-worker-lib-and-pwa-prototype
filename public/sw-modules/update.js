@@ -1,6 +1,7 @@
 function handleUpdate_setInterval() {
-	setInterval(function () {
-			updateCachesIfOld(PARAMS)
+	setInterval(async function () {
+			let cache = await caches.open(PARAMS.cacheName);
+			updateCachesIfOld(PARAMS.cacheOldenTime, cache)
 				.then((updateResult) => handleUpdateResult(updateResult))
 		}, PARAMS.updateInterval
 	)
