@@ -17,7 +17,6 @@ Strategy:
    do API request with timestamp of latest caching.
 */
 
-const CACHE_NAME = 'project-prototype-app-cache';
 console.info("SERVICE WORKER", "CALLING aelActivate");
 
 // Delete old unused caches if exist

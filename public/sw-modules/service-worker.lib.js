@@ -137,32 +137,79 @@ async function getFreeSpace() {
 /**
  * @param {string} requestUrl - request url to cache
  * @param {number} size - request size in bytes (set 0 if doc)
- * @param {number} [cachePriority] - cache priority of this request.
+ * @param {number} cachePriority - cache priority of this request.
  * if no space: cached requests with lower priority will be deleted
  * @param {number} freeSpace - available Space in cache storage
  * @param {Object} [requestParams] - fetch params
  * @param {Cache} cache - Cache interface
+ * @param {Object} [file] false or file object
  * @returns {Promise<{freeSpace: number, responseRaw: (Response | undefined)}>}
  * @description Downloads and caches request if enough space
  */
-async function downloadAndCacheRequest(requestUrl, size, cachePriority, freeSpace, requestParams = {}, cache) {
+async function downloadAndCacheRequest(
+	requestUrl, size, cachePriority, freeSpace, requestParams = {}, cache, file = false
+) {
 	let responseRaw;
 	if (size <= freeSpace) {
 		await fetch(requestUrl, requestParams).then(
 			rRaw => {
 				responseRaw = rRaw.clone();
 				// We can check here file headers if needed
-				cache.put(requestUrl, rRaw);
+
+				// Set headers for easy delete of low-prior files later
+				let headers = new Headers({
+					'cachepriority': cachePriority,
+					'size': size
+				});
+
+				let reqObject = new Request(requestUrl, {headers: headers});
+				cache.put(reqObject, rRaw);
 			}
 		);
 		freeSpace -= size;
 	} else {
-		// TODO: On update delete files with low priority to download files with high prior.
-		if (cachePriority !== undefined) {
-			// DELETE file with priority lower then this file has
-		}
+
+		/**
+		 * TODO: handleDeleteFromCacheToFreeSpace()
+		 * Bsort reqArray by prior, while cachePriority allows -> add to delArr requests to delete until
+		 * the necessary freeSpace amount is reached OR break and show error, if necessary amount can't be reached
+		 **/
+
+		// Handle not enough space
+
 		console.error(PARAMS.fileSpaceError);
+
+		// Array of cached requests
+		let requestsArr = await cache.keys();
+
+		// Get lowest priority
+		let lowestPrior = Math.max.apply(Math, requestsArr.map(function (r) {
+			return parseInt(r.headers.get('cachepriority'));
+		}));
+
+		//Proceed further if current file is more prior then some of cached files
+		if (cachePriority < lowestPrior) {
+			//Find request by lowest cache priority
+			let lowestPriorReq = keys.find((request, index) => {
+				if (parseInt(request.headers.get('cachepriority')) === lowestPrior) {
+					return true;
+				}
+			});
+			//Get size of this request
+			let lowestPriorReqSize = parseInt(lowestPriorReq.headers.get(size));
+			if ((freeSpace + lowestPriorReqSize) > size) {
+				await deleteCachedRequest(lowestPriorReq.url, cache);
+				freeSpace += lowestPriorReq;
+				await downloadAndCacheRequest(requestUrl, size, cachePriority, freeSpace, requestParams, cache, file);
+			}
+			else{
+			}
+		}
+		else {
+			console.log("File has too low prior to delete cached files")
+		}
 	}
+
 	return {freeSpace, responseRaw}
 }
 
@@ -171,6 +218,7 @@ async function downloadAndCacheRequest(requestUrl, size, cachePriority, freeSpac
  * @param {Object[]} filesArr - array of files to cache
  * @param {string} filesArr[].path - relative path
  * @param {number} filesArr[].size
+ * @param {number} filesArr[].cachePriority
  * @param {number} freeSpace - available Space in cache storage
  * @param {string} baseUrl - base url to download file
  * @param {Cache} cache - Cache interface
@@ -185,7 +233,7 @@ async function downloadAndCacheFiles(filesArr, freeSpace, baseUrl, cache) {
 			const fileReq = baseUrl + file.path;
 			(
 				{freeSpace} = await downloadAndCacheRequest(
-					fileReq, file.size, undefined, freeSpace, apiRequestAdacPARAMSImages, cache
+					fileReq, file.size, file.cachePriority, freeSpace, apiRequestAdacPARAMSImages, cache, file
 				)
 			)
 		}
@@ -233,7 +281,7 @@ async function downloadUpdateAndCacheFiles(cachedResponse, response, cache) {
 				if (file.needToCache) {
 					(
 						{freeSpace} = await downloadAndCacheRequest(
-							fileReq, file.size, file.priority, freeSpace, apiRequestAdacPARAMSImages, cache
+							fileReq, file.size, file.priority, freeSpace, apiRequestAdacPARAMSImages, cache, file
 						)
 					)
 				}
@@ -245,7 +293,7 @@ async function downloadUpdateAndCacheFiles(cachedResponse, response, cache) {
 			if (file.needToCache) {
 				(
 					{freeSpace} = await downloadAndCacheRequest(
-						fileReq, file.size, file.priority, freeSpace, apiRequestAdacPARAMSImages, cache
+						fileReq, file.size, file.priority, freeSpace, apiRequestAdacPARAMSImages, cache, file
 					)
 				)
 			}
