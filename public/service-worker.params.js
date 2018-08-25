@@ -16,6 +16,8 @@ var PARAMS = {
 	updateInterval: 600000, // Interval of update-request,
 	assetManifestUrl: '/asset-manifest.json',
 
+	needToCacheHeaderName: "need-to-cache-file",
+
 	// Errors
 	fileSpaceError: 'Not enough space for file',
 	storageEstimateLoadError: 'Loading storage estimate failed',

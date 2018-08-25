@@ -1,6 +1,3 @@
-// TODO: On update delete files with low priority to download files with high prior.
-// TODO: In every Fetch request as Request object
-
 function aelFetch() {
 	self.addEventListener('fetch', event => {
 		event.respondWith(async function () {

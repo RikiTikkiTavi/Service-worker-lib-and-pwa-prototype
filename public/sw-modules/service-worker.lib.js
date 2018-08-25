@@ -1,3 +1,8 @@
+// TODO: In every Fetch request as Request object
+// TODO: Split all functions on small reusable components
+// TODO: Lib to OOP style
+// TODO: Abstract from ADAC request
+
 /*
 * ADAC CONSTANTS
 * */
@@ -70,19 +75,12 @@ async function checkCachesThroughApi(cacheTimestamp) {
 		'https://pa.adac.rsm-stage.de/api/contents/bjoern@hempel.li/updates/contents.json?confirm=0firstupdate=1&last_update=' +
 		cacheTimestamp + '&token=80efdb358e43b56b15a9af74bcdca3b8b595eac7f1fd47aca0b01dfa005c91d0';
 
-	const apiRequestAdacHeaders = new Headers({
-		Authorization: 'Basic cnNtOnJzbTIwMTc='
-	});
-	const apiRequestAdacParams = {
-		headers: apiRequestAdacHeaders
-	};
-
 	let response;
 	let isCacheUpToDate;
 	let headers;
 
 	try {
-		let responseRaw = await fetch(apiRequestAdac, apiRequestAdacParams);
+		let responseRaw = await fetch(apiRequestAdac, apiRequestAdacPARAMS);
 		headers = responseRaw.headers;
 		response = await responseRaw.json();
 		console.log("UPDATE RECEIVED", response);
@@ -265,6 +263,14 @@ async function downloadAndCacheFiles(filesArr, freeSpace, baseUrl, cache) {
 }
 
 
+/**
+ * Sorts new filesArr, updates cachedResponse.files, deletes file if no more need to cache,
+ * overwrites old files if they are changed, downloads and caches new files
+ * @param {Object} cachedResponse - Cached main API request
+ * @param {Object} response - Fresh fetched main API request
+ * @param {Cache} cache - cache interface
+ * @returns {Promise<Array>} - updated cachedResponse.files array
+ */
 async function downloadUpdateAndCacheFiles(cachedResponse, response, cache) {
 
 	let freeSpace = await getFreeSpace();
@@ -285,27 +291,13 @@ async function downloadUpdateAndCacheFiles(cachedResponse, response, cache) {
 		// If file exists in cache
 		if (cachedResponse.files.hasOwnProperty(id)) {
 
-			// If file in cache has same path and size
-			if (file.path === cachedFile.path && file.size === cachedFile.size) {
-				cachedResponse.files[id] = file;
-				if (!file.needToCache) {
-					await deleteCachedRequest(cachedFile.path, cache);
-				}
-			}
-			// If file in cache has NOT the same path and size
-			else {
-				// If file needs to be cached
-				// Delete old file
-				await deleteCachedRequest(cachedFile.path, cache);
-				cachedResponse.files[id] = file;
-				if (file.needToCache) {
-					(
-						{freeSpace} = await downloadAndCacheRequest(
-							fileReq, file.size, file.priority, freeSpace, apiRequestAdacPARAMSImages, cache, file
-						)
-					)
-				}
-			}
+			// update file in cachedResponse and in Cache
+			(
+				{cachedResponse, freeSpace} = await updateFileInCachedResponseAndCaches(
+					cachedFile, file, cachedResponse, fileReq, freeSpace, cache
+				)
+			)
+
 		}
 		// If file NOT exists in cache
 		else {
@@ -313,7 +305,7 @@ async function downloadUpdateAndCacheFiles(cachedResponse, response, cache) {
 			if (file.needToCache) {
 				(
 					{freeSpace} = await downloadAndCacheRequest(
-						fileReq, file.size, file.priority, freeSpace, apiRequestAdacPARAMSImages, cache, file
+						fileReq, file.size, file.priority, freeSpace, apiRequestAdacPARAMSImages, cache
 					)
 				)
 			}
@@ -323,12 +315,64 @@ async function downloadUpdateAndCacheFiles(cachedResponse, response, cache) {
 }
 
 
+/**
+ * Updates cachedResponse.files, deletes file if no more need to cache,
+ * overwrites old files if they are changed
+ * @param {Object} cachedFile - Old file object
+ * @param {Object} file - New file object
+ * @param {Object} cachedResponse - cached Response of main API
+ * @param {String} fileReq - URL to fetch file
+ * @param {number} freeSpace - available space
+ * @param {Cache} cache - cache interface
+ * @returns {Promise<{cachedResponse: Object, freeSpace: number}>}
+ */
+async function updateFileInCachedResponseAndCaches (
+	cachedFile, file, cachedResponse, fileReq, freeSpace, cache
+){
+	// If file in cache has same path and size
+	if (file.path === cachedFile.path && file.size === cachedFile.size) {
+		cachedResponse.files[id] = file;
+		if (!file.needToCache) {
+			await deleteCachedRequest(cachedFile.path, cache);
+		}
+		freeSpace+=cachedFile.size;
+	}
+	// If file in cache has NOT the same path and size
+	else {
+		// If file needs to be cached
+		// Delete old file
+		await deleteCachedRequest(cachedFile.path, cache);
+		freeSpace+=cachedFile.size;
+		cachedResponse.files[id] = file;
+		if (file.needToCache) {
+			(
+				{freeSpace} = await downloadAndCacheRequest(
+					fileReq, file.size, file.priority, freeSpace, apiRequestAdacPARAMSImages, cache
+				)
+			)
+		}
+	}
+	return {cachedResponse, freeSpace}
+}
+
+
+/**
+ * Sets current timestamp on request /get_cache_timestamp
+ * @param cache
+ */
 function setCurrentTimestamp(cache) {
 	const currentTimestamp = Math.round(new Date().getTime() / 1000);
 	cache.put('/get_cache_timestamp', new Response(currentTimestamp));
 }
 
 
+/**
+ * Updates caches if caches older then cacheOldenTime and response has updates
+ * @param {number} cacheOldenTime - time after cache is old (seconds)
+ * @param {Cache} cache - cache Interface
+ * @returns {Promise<number>} - 1 if have updated cache, 0 if caches are up to date,
+ * 404 if offline or api unavailable
+ */
 async function updateCachesIfOld(cacheOldenTime, cache) {
 	console.log('updateCachesIfOld()');
 	let {isCacheOld, cacheTimestamp} = await checkCachesThroughCachedTimestamp(cacheOldenTime);
@@ -355,6 +399,10 @@ async function updateCachesIfOld(cacheOldenTime, cache) {
 }
 
 
+/**
+ * Sends message to client
+ * @param {String} msg - message
+ */
 function sendMessage(msg) {
 	self.clients.matchAll().then(function (clients) {
 		clients.forEach(function (client) {
@@ -366,11 +414,21 @@ function sendMessage(msg) {
 }
 
 
+/**
+ * Converts header value to true/false
+ * @param response
+ * @param headerName
+ * @returns {boolean} - true if header value is 1, false if header value is 1
+ */
 function isHeaderValueTrue(response, headerName) {
 	return response.headers.get(headerName) === '1';
 }
 
 
+/**
+ * Converts update result code in message and sends it to client
+ * @param updateResult
+ */
 function handleUpdateResult(updateResult) {
 	console.log("UPDATE RESULT", updateResult);
 	if (updateResult === 1) {
@@ -422,6 +480,12 @@ async function updateCaches(response, headers, cache) {
 }
 
 
+/**
+ * Fetches request from server
+ * @param {String} request - request to fetch
+ * @returns {Promise<Response|undefined>} - Response on success, undefined if offline or
+ * API unavailable
+ */
 async function tryFetchFromServer(request) {
 	let serverResponse;
 	try {
@@ -433,9 +497,18 @@ async function tryFetchFromServer(request) {
 }
 
 
-async function handleFetchServerResponse(serverResponse, param, cache) {
+/**
+ * Function handles response from server, if general caching in params is enabled and
+ * needToCache header is true
+ * @param {Response} serverResponse - Response
+ * @param {String} param - param in PARAMS that enables/disables general caching for req of this type
+ * @param {Cache} cache - cache interface
+ * @param {String} needToCacheHeaderName - needToCache header name
+ * @returns {Promise<void>}
+ */
+async function handleFetchServerResponse(serverResponse, param, cache, needToCacheHeaderName) {
 	if (
-		isHeaderValueTrue(serverResponse, "need-to-cache-file")
+		isHeaderValueTrue(serverResponse, needToCacheHeaderName)
 		&& PARAMS[param]
 	) {
 		cache.put(event.request.url, serverResponse.clone());
@@ -443,7 +516,12 @@ async function handleFetchServerResponse(serverResponse, param, cache) {
 }
 
 
-// Handle images caching logic when user makes request
+/**
+ * Handles images caching logic when user makes request
+ * @param event - fetch event
+ * @param {Cache} cache - cache Interface
+ * @returns {Promise<Response>} - cached response, server response or dummy image
+ */
 async function handleFetchImage(event, cache) {
 
 	// Try to get the response from a cache.
@@ -463,7 +541,7 @@ async function handleFetchImage(event, cache) {
 			* 1) need-to-cache-file header
 			* 2) Images fetch caching is enabled */
 
-			await handleFetchServerResponse(serverResponse, 'enableGeneralImagesCaching', cache);
+			await handleFetchServerResponse(serverResponse, 'enableGeneralImagesCaching', cache, PARAMS.needToCacheHeaderName);
 
 			return serverResponse
 		}
@@ -480,9 +558,14 @@ async function handleFetchImage(event, cache) {
 }
 
 
-// Handle other content caching logic when user makes request
+/**
+ * Handle other content caching logic when user makes request
+ * @param event - fetch event
+ * @param {Cache} cache - cache interface
+ * @returns {Promise<Response>} - cached response or server response or homepage
+ */
 async function handleFetchOther(event, cache) {
-	var cachedResponse;
+	let cachedResponse;
 	cachedResponse = await caches.match(event.request, {ignoreVary: true});
 	if (cachedResponse !== undefined) {
 		return cachedResponse;
@@ -498,14 +581,25 @@ async function handleFetchOther(event, cache) {
 		* Here we cache Response, if (fresh cache for this req doesn't exist):
 		* 1) Header param
 		* 2) General fetch caching is enabled */
-		console.log("SR1", serverResponse);
-		await handleFetchServerResponse(serverResponse, 'enableGeneralFetchCaching', cache);
+		await handleFetchServerResponse(serverResponse, 'enableGeneralFetchCaching', cache, PARAMS.needToCacheHeaderName);
 		return serverResponse
 	}
+
+	//TODO: Notify user if page is unavailable
 
 	return await caches.match('/', {ignoreVary: true});
 }
 
+
+/**
+ * Sorts array of objects by property or by header value, if specified. Removes
+ * elements, where noNeedToCache if doRemoveWhereNoNeedToCache is true
+ * @param {array<Object>} arr - array to sort
+ * @param {boolean} doRemoveWhereNoNeedToCache - remove elements, that no need to cache
+ * @param {String} property - property name to sort array by
+ * @param {String} [headerNameAsParam] - if not undefined - sort array by header value
+ * @returns {array<Object>} - sorted array
+ */
 function bSortArrAndRmNoCache(arr, doRemoveWhereNoNeedToCache, property, headerNameAsParam) {
 	let len = arr.length;
 	let swapped;
@@ -546,6 +640,7 @@ function bSortArrAndRmNoCache(arr, doRemoveWhereNoNeedToCache, property, headerN
 	return arr;
 }
 
+
 function tempAddPARAMSToFiles(filesArr) {
 	for (let i = 0; i < filesArr.length; i++) {
 		filesArr[i].cachePriority = Math.floor(Math.random() * 5);
@@ -554,6 +649,13 @@ function tempAddPARAMSToFiles(filesArr) {
 	return filesArr;
 }
 
+
+/**
+ * Fetches and caches url with additional headers
+ * @param {String} url - url to cache
+ * @param {Object} headers - additional headers object
+ * @param {Cache} cache - cache interface
+ */
 function cacheWithAdditionalHeaders(url, headers, cache) {
 	fetch(url).then((response) => {
 		let newHeaders = new Headers(response.headers);
@@ -565,6 +667,13 @@ function cacheWithAdditionalHeaders(url, headers, cache) {
 	});
 }
 
+
+/**
+ * Gets static urls from assets-manifest json file.
+ * @param {String} assetManifestUrl - url of asset-manifest
+ * @param {Array} staticFilesArray - files to cache
+ * @returns {Promise<Array>} - returns urls ready to add to cache
+ */
 async function getStaticUrls(assetManifestUrl, staticFilesArray) {
 	let urlsToCache = [];
 	let assetsResponse = await fetch(assetManifestUrl);
