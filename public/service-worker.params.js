@@ -21,6 +21,7 @@ var PARAMS = {
 	storageEstimateLoadError: 'Loading storage estimate failed',
 	storageApiUnavailableError: 'Storage Api Unavailable',
 	refreshFailMessage: "Update failed, please connect to the internet to update caches",
+	unableToFreeSpaceError: "Unable to free space for file",
 
 	// Messages
 	installationCompleteMsg: 'App is ready for offline use',

@@ -142,22 +142,22 @@ async function getFreeSpace() {
  * @param {number} freeSpace - available Space in cache storage
  * @param {Object} [requestParams] - fetch params
  * @param {Cache} cache - Cache interface
- * @param {Object} [file] false or file object
  * @returns {Promise<{freeSpace: number, responseRaw: (Response | undefined)}>}
- * @description Downloads and caches request if enough space
+ * @description Downloads and caches request if enough space, if not - tries to free space;
  */
 async function downloadAndCacheRequest(
-	requestUrl, size, cachePriority, freeSpace, requestParams = {}, cache, file = false
+	requestUrl, size, cachePriority, freeSpace, requestParams = {}, cache
 ) {
 	let responseRaw;
-	if (size <= freeSpace) {
+	if (size < freeSpace) {
 		await fetch(requestUrl, requestParams).then(
 			rRaw => {
 				responseRaw = rRaw.clone();
 				// We can check here file headers if needed
 
 				// Set headers for easy delete of low-prior files later
-				let headers = new Headers({
+				let headers;
+				headers = new Headers({
 					'cachepriority': cachePriority,
 					'size': size
 				});
@@ -169,50 +169,70 @@ async function downloadAndCacheRequest(
 		freeSpace -= size;
 	} else {
 
-		/**
-		 * TODO: handleDeleteFromCacheToFreeSpace()
-		 * Bsort reqArray by prior, while cachePriority allows -> add to delArr requests to delete until
-		 * the necessary freeSpace amount is reached OR break and show error, if necessary amount can't be reached
-		 **/
-
-		// Handle not enough space
-
 		console.error(PARAMS.fileSpaceError);
 
-		// Array of cached requests
-		let requestsArr = await cache.keys();
+		let {reqToDelete, emulatedFreeSpace} = await emulateDeleteFromCacheToFreeSpace(
+			size, cachePriority, freeSpace, cache
+		);
 
-		// Get lowest priority
-		let lowestPrior = Math.max.apply(Math, requestsArr.map(function (r) {
-			return parseInt(r.headers.get('cachepriority'));
-		}));
+		// If emulatedFreeSpace is enough - cache file, else - not available to cache file
+		if (size < emulatedFreeSpace) {
+			for (let i in reqToDelete) {
+				await deleteCachedRequest(reqToDelete[i].url, cache)
+			}
+			freeSpace = emulatedFreeSpace;
+			(
+				{freeSpace, responseRaw} = await downloadAndCacheRequest(
+					requestUrl, size, cachePriority, freeSpace, requestParams, cache
+				)
+			)
+		} else {
+			console.error(PARAMS.unableToFreeSpaceError);
+		}
 
-		//Proceed further if current file is more prior then some of cached files
-		if (cachePriority < lowestPrior) {
-			//Find request by lowest cache priority
-			let lowestPriorReq = keys.find((request, index) => {
-				if (parseInt(request.headers.get('cachepriority')) === lowestPrior) {
-					return true;
-				}
-			});
-			//Get size of this request
-			let lowestPriorReqSize = parseInt(lowestPriorReq.headers.get(size));
-			if ((freeSpace + lowestPriorReqSize) > size) {
-				await deleteCachedRequest(lowestPriorReq.url, cache);
-				freeSpace += lowestPriorReq;
-				await downloadAndCacheRequest(requestUrl, size, cachePriority, freeSpace, requestParams, cache, file);
-			}
-			else{
-			}
-		}
-		else {
-			console.log("File has too low prior to delete cached files")
-		}
 	}
 
 	return {freeSpace, responseRaw}
 }
 
+/**
+ * @param {number} size - request size in bytes (set 0 if doc)
+ * @param {number} cachePriority - cache priority of this request
+ * @param {number} freeSpace - available Space in cache storage
+ * @param {Cache} cache - Cache interface
+ * @returns {Promise<{reqToDelete: Array, emulatedFreeSpace: number}>}
+ * @description Function emulates deletion of Requests and returns
+ * an array of Requests and amount of space, that could be free
+ */
+async function emulateDeleteFromCacheToFreeSpace(
+	size, cachePriority, freeSpace, cache
+) {
+
+	// Array of cached requests
+	let requestsArr = await cache.keys();
+
+	//bsort
+	requestsArr = bSortArrAndRmNoCache(requestsArr, false, undefined, 'cachepriority');
+
+	let reqToDelete = [];
+	let emulatedFreeSpace = freeSpace;
+
+	// Try to free space
+	while (size>emulatedFreeSpace) {
+		let requestsArrLength = requestsArr.length;
+		let lastReq = requestsArr[requestsArrLength - 1];
+		let lastCachePrior = parseInt(lastReq.headers.get('cachepriority'));
+		let lastSize = parseInt(lastReq.headers.get('size'));
+		if (lastCachePrior > cachePriority) {
+			reqToDelete.push(lastReq);
+			emulatedFreeSpace += lastSize;
+			requestsArr.splice(requestsArrLength - 1, 1)
+		} else {
+			break;
+		}
+	}
+	return {reqToDelete, emulatedFreeSpace}
+}
 
 /**
  * @param {Object[]} filesArr - array of files to cache
@@ -233,7 +253,7 @@ async function downloadAndCacheFiles(filesArr, freeSpace, baseUrl, cache) {
 			const fileReq = baseUrl + file.path;
 			(
 				{freeSpace} = await downloadAndCacheRequest(
-					fileReq, file.size, file.cachePriority, freeSpace, apiRequestAdacPARAMSImages, cache, file
+					fileReq, file.size, file.cachePriority, freeSpace, apiRequestAdacPARAMSImages, cache
 				)
 			)
 		}
@@ -254,7 +274,7 @@ async function downloadUpdateAndCacheFiles(cachedResponse, response, cache) {
 	let filesArr = tempAddPARAMSToFiles(response.files);
 
 	// Sort them and remove no-cache files
-	filesArr = bSortFilesByPriorAndRmNoCache(filesArr, false);
+	filesArr = bSortArrAndRmNoCache(filesArr, false, 'cachePriority');
 
 	for (let id in filesArr) {
 		const file = filesArr[id];
@@ -486,28 +506,44 @@ async function handleFetchOther(event, cache) {
 	return await caches.match('/', {ignoreVary: true});
 }
 
-function bSortFilesByPriorAndRmNoCache(filesArr, doRemoveWhereNoNeedToCache) {
-	let len = filesArr.length;
+function bSortArrAndRmNoCache(arr, doRemoveWhereNoNeedToCache, property, headerNameAsParam) {
+	let len = arr.length;
 	let swapped;
 	do {
 		swapped = false;
 		for (let i = 0; i < len; i++) {
-			if (filesArr[i].needToCache === 0 && doRemoveWhereNoNeedToCache) {
-				filesArr.splice(i, 1);
-				len--;
+			if (doRemoveWhereNoNeedToCache) {
+				if (arr[i].needToCache === 0) {
+					arr.splice(i, 1);
+					len--;
+				}
+				if (i === len - 1 || i === len) {
+					break;
+				}
 			}
-			if (i === len - 1 || i === len) {
-				break;
+
+			let property = property;
+
+			let val;
+			let valNext;
+
+			if (headerNameAsParam !== undefined) {
+				val = arr[i].headers.get(headerNameAsParam);
+				valNext = arr[i + 1].headers.get(headerNameAsParam);
 			}
-			if (filesArr[i].cachePriority > filesArr[i + 1].cachePriority) {
-				const tmp = filesArr[i];
-				filesArr[i] = filesArr[i + 1];
-				filesArr[i + 1] = tmp;
+			else {
+				val = arr[i][property];
+				valNext = arr[i + 1][property];
+			}
+			if (val > valNext) {
+				const tmp = arr[i];
+				arr[i] = arr[i + 1];
+				arr[i + 1] = tmp;
 				swapped = true;
 			}
 		}
 	} while (swapped);
-	return filesArr;
+	return arr;
 }
 
 function tempAddPARAMSToFiles(filesArr) {

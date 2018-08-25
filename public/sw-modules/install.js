@@ -57,7 +57,7 @@ async function aelInstall() {
 					/* In api response we have cachePriority and needToCache param for each file,
 						 * so we sort an array of files by priority from high to low and remove
 						 * files we don't need to cache */
-					filesArr = bSortFilesByPriorAndRmNoCache(filesArr, true);
+					filesArr = bSortArrAndRmNoCache(filesArr, true, 'cachePriority');
 					console.log('FILES ARRAY AFTER SORTING', filesArr);
 
 					// 3.3. Iterate files-array:
