@@ -1,8 +1,7 @@
 // TODO: In every Fetch request as Request object
-// TODO: Split all functions on small reusable components
 // TODO: Lib to OOP style
 // TODO: Abstract from ADAC request
-
+// TODO: Construct main API request from PARAMS
 /*
 
 API requirements:
@@ -45,6 +44,18 @@ const apiRequestAdacPARAMSImages = {
     method: 'GET',
     credentials: "include"
 };
+
+// !! baseUrl without / in the end
+// TODO: documentation
+function constructRequest(baseUrl, properties, headersInit, getReqParams){
+	properties.headers = new Headers(headersInit);
+	let reqUrl = baseUrl;
+	for(let key in getReqParams){
+		// noinspection JSUnfilteredForInLoop
+        reqUrl+="?"+key+"="+getReqParams[key];
+	}
+    return new Request(reqUrl, properties);
+}
 
 /**
  * @param {number} cacheOldenTime - Cache olden time
