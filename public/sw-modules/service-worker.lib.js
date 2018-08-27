@@ -11,22 +11,23 @@ const apiRequestAdac =
 	'https://pa.adac.rsm-stage.de/api/contents/bjoern@hempel.li/updates/contents.json?confirm=0&firstupdate=1&last_update=0&token=80efdb358e43b56b15a9af74bcdca3b8b595eac7f1fd47aca0b01dfa005c91d0';
 
 const apiRequestAdacHeaders = new Headers({
-	Authorization: 'Basic cnNtOnJzbTIwMTc='
+	'Authorization': 'Basic '+btoa('rsm:rsm2017')
 });
 
 const apiRequestAdacPARAMS = {
-	headers: apiRequestAdacHeaders
+	headers: apiRequestAdacHeaders,
 };
 
 // Temporary cross-origin req
 const apiRequestAdacImagesHeaders = new Headers({
-	Authorization: 'Basic cnNtOnJzbTIwMTc=',
-	"Content-Type": "image/jpg",
+	'Authorization': 'Basic '+btoa('rsm:rsm2017'),
 });
 
 const apiRequestAdacPARAMSImages = {
 	headers: apiRequestAdacImagesHeaders,
-	mode: 'no-cors'
+	mode: 'no-cors',
+    method: 'GET',
+    credentials: "include"
 };
 
 /**
@@ -146,6 +147,7 @@ async function getFreeSpace() {
 async function downloadAndCacheRequest(
 	requestUrl, size, cachePriority, freeSpace, requestParams = {}, cache
 ) {
+
 	let responseRaw;
 	if (size < freeSpace) {
 		await fetch(requestUrl, requestParams).then(
@@ -245,7 +247,16 @@ async function emulateDeleteFromCacheToFreeSpace(
  * @description Downloads and caches files from array, if enough space
  */
 async function downloadAndCacheFiles(filesArr, freeSpace, baseUrl, cache) {
-	try {
+
+    //TEST
+    console.log(apiRequestAdacPARAMSImages);
+    for (var value of apiRequestAdacImagesHeaders.values()) {
+        console.log(value);
+    }
+    let testReq = new Request('https://pa.adac.rsm-stage.de/files/media/Tourismus_Reiserecht.jpg', apiRequestAdacPARAMSImages);
+    await fetch(testReq);
+
+    try {
 		for (const i in filesArr) {
 			const file = filesArr[i];
 			const fileReq = baseUrl + file.path;
@@ -482,14 +493,19 @@ async function updateCaches(response, headers, cache) {
 
 /**
  * Fetches request from server
+ * ADAC: temporary with type param to set request params
  * @param {String} request - request to fetch
  * @returns {Promise<Response|undefined>} - Response on success, undefined if offline or
  * API unavailable
  */
-async function tryFetchFromServer(request) {
+async function tryFetchFromServer(request, reqtype) {
 	let serverResponse;
 	try {
-		serverResponse = await fetch(request)
+	    if(reqtype!==undefined){
+            serverResponse = await fetch(request, apiRequestAdacPARAMSImages)
+        }else{
+            serverResponse = await fetch(request)
+        }
 	} catch (e) {
 		console.log(e)
 	}
@@ -531,7 +547,7 @@ async function handleFetchImage(event, cache) {
 	if (cachedResponse === undefined) {
 
 		// Check if server is available
-		let serverResponse = await tryFetchFromServer(event.request);
+		let serverResponse = await tryFetchFromServer(event.request, 'img');
 
 		// If server is available
 		if (serverResponse !== undefined) {
@@ -615,8 +631,6 @@ function bSortArrAndRmNoCache(arr, doRemoveWhereNoNeedToCache, property, headerN
 					break;
 				}
 			}
-
-			let property = property;
 
 			let val;
 			let valNext;
