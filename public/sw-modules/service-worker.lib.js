@@ -4,6 +4,22 @@
 // TODO: Abstract from ADAC request
 
 /*
+
+API requirements:
+
+1) Must have response.code for checking update status
+2) File in Files object must have path property!
+3) Must have response.files - object of files, id: fileObject
+4) File in Files object must have needToCache property!
+5) File in Files object must have size property!
+6) TRUE/FALSE headers must have values 1 or 0
+7) response must have needToCache (name can be custom) header
+8) File in Files object must have cachePriority (name can be custom) property!
+
+*/
+
+
+/*
 * ADAC CONSTANTS
 * */
 
@@ -54,7 +70,7 @@ async function checkCachesThroughCachedTimestamp(cacheOldenTime) {
 	return {isCacheOld, cacheTimestamp}
 }
 
-
+// ADAC: Must have code key for checking update status
 /**
  * @param {number} cacheTimestamp - timestamp of last cache update / installation
  * @returns {Promise<{
@@ -157,13 +173,15 @@ async function downloadAndCacheRequest(
 
 				// Set headers for easy delete of low-prior files later
 				let headers;
-				headers = new Headers({
+				// noinspection JSCheckFunctionSignatures
+                headers = new Headers({
 					'cachepriority': cachePriority,
 					'size': size
 				});
 
 				let reqObject = new Request(requestUrl, {headers: headers});
-				cache.put(reqObject, rRaw);
+				// noinspection JSIgnoredPromiseFromCall
+                cache.put(reqObject, rRaw);
 			}
 		);
 		freeSpace -= size;
@@ -211,7 +229,7 @@ async function emulateDeleteFromCacheToFreeSpace(
 	// Array of cached requests
 	let requestsArr = await cache.keys();
 
-	//bsort
+	// Bubble sort by cachepriority
 	requestsArr = bSortArrAndRmNoCache(requestsArr, false, undefined, 'cachepriority');
 
 	let reqToDelete = [];
@@ -234,6 +252,7 @@ async function emulateDeleteFromCacheToFreeSpace(
 	return {reqToDelete, emulatedFreeSpace}
 }
 
+// ADAC: File in Files array must have path property!
 /**
  * @param {Object[]} filesArr - array of files to cache
  * @param {string} filesArr[].path - relative path
@@ -247,14 +266,6 @@ async function emulateDeleteFromCacheToFreeSpace(
  * @description Downloads and caches files from array, if enough space
  */
 async function downloadAndCacheFiles(filesArr, freeSpace, baseUrl, cache) {
-
-    //TEST
-    console.log(apiRequestAdacPARAMSImages);
-    for (var value of apiRequestAdacImagesHeaders.values()) {
-        console.log(value);
-    }
-    let testReq = new Request('https://pa.adac.rsm-stage.de/files/media/Tourismus_Reiserecht.jpg', apiRequestAdacPARAMSImages);
-    await fetch(testReq);
 
     try {
 		for (const i in filesArr) {
@@ -273,33 +284,37 @@ async function downloadAndCacheFiles(filesArr, freeSpace, baseUrl, cache) {
 	}
 }
 
-
+// ADAC: Must have response.files - array of files
+// ADAC: File in Files object must have needToCache property!
+// ADAC: File in Files object must have path property!
 /**
  * Sorts new filesArr, updates cachedResponse.files, deletes file if no more need to cache,
  * overwrites old files if they are changed, downloads and caches new files
  * @param {Object} cachedResponse - Cached main API request
  * @param {Object} response - Fresh fetched main API request
  * @param {Cache} cache - cache interface
+ * @param {String} baseApiUrl - base url of API
  * @returns {Promise<Array>} - updated cachedResponse.files array
  */
-async function downloadUpdateAndCacheFiles(cachedResponse, response, cache) {
+async function downloadUpdateAndCacheFiles(cachedResponse, response, cache, baseApiUrl) {
 
 	let freeSpace = await getFreeSpace();
 	console.log("downloadUpdateAndCacheFiles() -> freeSpace", freeSpace);
 
-	// TEMPORARY add params to files
+	// ADAC: TEMPORARY add params to files
 	let filesArr = tempAddPARAMSToFiles(response.files);
 
 	// Sort them and remove no-cache files
 	filesArr = bSortArrAndRmNoCache(filesArr, false, 'cachePriority');
 
 	for (let id in filesArr) {
-		const file = filesArr[id];
-		const cachedFile = cachedResponse.files[id];
-		const fileReq = `https://pa.adac.rsm-stage.de/${
-			file.path
-			}`;
+		// noinspection JSUnfilteredForInLoop
+        const file = filesArr[id];
+		// noinspection JSUnfilteredForInLoop
+        const cachedFile = cachedResponse.files[id];
+		const fileReq = baseApiUrl+file.path;
 		// If file exists in cache
+        // noinspection JSUnfilteredForInLoop
 		if (cachedResponse.files.hasOwnProperty(id)) {
 
 			// update file in cachedResponse and in Cache
@@ -312,11 +327,12 @@ async function downloadUpdateAndCacheFiles(cachedResponse, response, cache) {
 		}
 		// If file NOT exists in cache
 		else {
-			cachedResponse.files[id] = file;
+			// noinspection JSUnfilteredForInLoop
+            cachedResponse.files[id] = file;
 			if (file.needToCache) {
 				(
 					{freeSpace} = await downloadAndCacheRequest(
-						fileReq, file.size, file.priority, freeSpace, apiRequestAdacPARAMSImages, cache
+						fileReq, file.size, file.cachePriority, freeSpace, apiRequestAdacPARAMSImages, cache
 					)
 				)
 			}
@@ -325,7 +341,10 @@ async function downloadUpdateAndCacheFiles(cachedResponse, response, cache) {
 	return cachedResponse.files
 }
 
-
+// ADAC: File in Files object must have path property!
+// ADAC: File in Files object must have size property!
+// ADAC: apiRequestAdacPARAMSImages
+// ADAC: Must have response.files - object of files, id: fileObject
 /**
  * Updates cachedResponse.files, deletes file if no more need to cache,
  * overwrites old files if they are changed
@@ -358,7 +377,7 @@ async function updateFileInCachedResponseAndCaches (
 		if (file.needToCache) {
 			(
 				{freeSpace} = await downloadAndCacheRequest(
-					fileReq, file.size, file.priority, freeSpace, apiRequestAdacPARAMSImages, cache
+					fileReq, file.size, file.cachePriority, freeSpace, apiRequestAdacPARAMSImages, cache
 				)
 			)
 		}
@@ -373,7 +392,8 @@ async function updateFileInCachedResponseAndCaches (
  */
 function setCurrentTimestamp(cache) {
 	const currentTimestamp = Math.round(new Date().getTime() / 1000);
-	cache.put('/get_cache_timestamp', new Response(currentTimestamp));
+	// noinspection JSCheckFunctionSignatures
+    cache.put('/get_cache_timestamp', new Response(currentTimestamp));
 }
 
 
@@ -409,7 +429,7 @@ async function updateCachesIfOld(cacheOldenTime, cache) {
 	return 0;
 }
 
-
+// TODO: Improve messages sending to customize notifications
 /**
  * Sends message to client
  * @param {String} msg - message
@@ -424,7 +444,7 @@ function sendMessage(msg) {
 	});
 }
 
-
+// ADAC: TRUE/FALSE headers must have values 1 or 0
 /**
  * Converts header value to true/false
  * @param response
@@ -453,12 +473,13 @@ function handleUpdateResult(updateResult) {
 	}
 }
 
-
+// ADAC: Updates now only categories and files
+// TODO: What to update must be param
 /**
- * @function updateCaches
- * @param response: Fresh response
- * @param headers: Old headers
- * @param cache: result of caches.open
+ * @description Cache update flow
+ * @param response - Fresh response
+ * @param headers - Old headers
+ * @param cache - result of caches.open
  * @returns {Promise<void>}
  */
 async function updateCaches(response, headers, cache) {
@@ -472,28 +493,29 @@ async function updateCaches(response, headers, cache) {
 	cachedResponse.code = response.code;
 	cachedResponse.message = response.message;
 
+	// Temporary update only categories
 	// Update categories
 	for (let id in response.categories) {
-		cachedResponse.categories[id] = response.categories[id];
+		// noinspection JSUnfilteredForInLoop
+        cachedResponse.categories[id] = response.categories[id];
 	}
 
 	// Update files
-	cachedResponse.files = await downloadUpdateAndCacheFiles(cachedResponse, response, cache);
+	cachedResponse.files = await downloadUpdateAndCacheFiles(cachedResponse, response, cache, PARAMS.baseApiUrl);
 
 	// Create new cache Response
 	let cachedResponseRawNew = new Response(JSON.stringify(cachedResponse), {headers: headers});
 
 	// Update timestamp and update Response in caches
-	const currentTimestamp = Math.round(new Date().getTime() / 1000);
 	console.log("Setting new timestamp and updating cache");
-	cache.put('/get_cache_timestamp', new Response(currentTimestamp));
+    await setCurrentTimestamp(cache);
 	cache.put(apiRequestAdac, cachedResponseRawNew);
 }
 
 
 /**
  * Fetches request from server
- * ADAC: temporary with type param to set request params
+ * ADAC: temporary with type param to set request params (avoiding CORB)
  * @param {String} request - request to fetch
  * @returns {Promise<Response|undefined>} - Response on success, undefined if offline or
  * API unavailable
@@ -512,7 +534,7 @@ async function tryFetchFromServer(request, reqtype) {
 	return serverResponse;
 }
 
-
+// ADAC: response must have needToCache header
 /**
  * Function handles response from server, if general caching in params is enabled and
  * needToCache header is true
@@ -527,18 +549,20 @@ async function handleFetchServerResponse(serverResponse, param, cache, needToCac
 		isHeaderValueTrue(serverResponse, needToCacheHeaderName)
 		&& PARAMS[param]
 	) {
-		cache.put(event.request.url, serverResponse.clone());
+		// noinspection JSIgnoredPromiseFromCall
+        cache.put(event.request.url, serverResponse.clone());
 	}
 }
 
-
+// ADAC: response must have needToCache (name can be custom) header
 /**
  * Handles images caching logic when user makes request
  * @param event - fetch event
  * @param {Cache} cache - cache Interface
+ * @param {String} dummyUrl - Url of dummy image
  * @returns {Promise<Response>} - cached response, server response or dummy image
  */
-async function handleFetchImage(event, cache) {
+async function handleFetchImage(event, cache, dummyUrl) {
 
 	// Try to get the response from a cache.
 	const cachedResponse = await caches.match(event.request);
@@ -563,8 +587,7 @@ async function handleFetchImage(event, cache) {
 		}
 
 		// If server not available return dummy image
-		// Отдавать также статус ("IMAGE_NOT_AVAILABLE")
-		return caches.match('/content/images/dummy.jpg');
+		return caches.match(dummyUrl);
 	}
 
 	//Else return cached image
@@ -573,7 +596,7 @@ async function handleFetchImage(event, cache) {
 	}
 }
 
-
+// ADAC: response must have needToCache (name can be custom) header
 /**
  * Handle other content caching logic when user makes request
  * @param event - fetch event
@@ -602,7 +625,6 @@ async function handleFetchOther(event, cache) {
 	}
 
 	//TODO: Notify user if page is unavailable
-
 	return await caches.match('/', {ignoreVary: true});
 }
 
@@ -654,7 +676,7 @@ function bSortArrAndRmNoCache(arr, doRemoveWhereNoNeedToCache, property, headerN
 	return arr;
 }
 
-
+// Temporary
 function tempAddPARAMSToFiles(filesArr) {
 	for (let i = 0; i < filesArr.length; i++) {
 		filesArr[i].cachePriority = Math.floor(Math.random() * 5);
@@ -665,7 +687,7 @@ function tempAddPARAMSToFiles(filesArr) {
 
 
 /**
- * Fetches and caches url with additional headers
+ * Fetches and caches url with additional headers. USE ONLY FOR 100% MUST BE CACHED.
  * @param {String} url - url to cache
  * @param {Object} headers - additional headers object
  * @param {Cache} cache - cache interface

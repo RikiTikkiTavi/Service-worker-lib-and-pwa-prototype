@@ -28,7 +28,7 @@ async function aelInstall() {
 					cache.addAll(urlsToCache);
 
 					// Cache dummy alone, because need to set header
-					cacheWithAdditionalHeaders('content/images/dummy.jpg', {name: "dummy", value: "true"}, cache);
+					cacheWithAdditionalHeaders(PARAMS.dummyImage, {name: "dummy", value: "true"}, cache);
 
 					// 2) Save current timestamp -> so we can update cache, when it is older then X
 					setCurrentTimestamp(cache);

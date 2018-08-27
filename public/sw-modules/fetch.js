@@ -14,7 +14,7 @@ function aelFetch() {
 			else {
 
 				if (event.request.destination === 'image') {
-					return await handleFetchImage(event, cache);
+					return await handleFetchImage(event, cache, PARAMS.dummyImage);
 				}
 				// Handle other content caching logic when user makes request
 				return await handleFetchOther(event, cache);
