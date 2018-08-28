@@ -26,7 +26,7 @@ const apiRequestAdac =
 	'https://pa.adac.rsm-stage.de/api/contents/bjoern@hempel.li/updates/contents.json?confirm=0&firstupdate=1&last_update=0&token=80efdb358e43b56b15a9af74bcdca3b8b595eac7f1fd47aca0b01dfa005c91d0';
 
 const apiRequestAdacHeaders = new Headers({
-	'Authorization': 'Basic '+btoa('rsm:rsm2017')
+	'Authorization': 'Basic ' + btoa('rsm:rsm2017')
 });
 
 const apiRequestAdacPARAMS = {
@@ -35,7 +35,7 @@ const apiRequestAdacPARAMS = {
 
 // Temporary cross-origin req
 const apiRequestAdacImagesHeaders = new Headers({
-	'Authorization': 'Basic '+btoa('rsm:rsm2017'),
+	'Authorization': 'Basic ' + btoa('rsm:rsm2017'),
 });
 
 const apiRequestAdacPARAMSImages = {
@@ -46,14 +46,29 @@ const apiRequestAdacPARAMSImages = {
 };
 
 // !! baseUrl without / in the end
+
 // TODO: documentation
-function constructRequest(baseUrl, properties, headersInit, getReqParams){
+// TODO: Handle POST request construction
+/**
+ *
+ * @description Creates request object with specified params
+ * @param {string} baseUrl
+ * @param {string} path
+ * @param {Object} properties - props of Request
+ * @param {Object} headersInit - Headers in format "key": "value"
+ * @param {Object} getReqParams - Get request properties in format "key": "value"
+ * @returns {Request} - request object
+ */
+function constructRequest(baseUrl, path, properties, headersInit, getReqParams){
 	properties.headers = new Headers(headersInit);
-	let reqUrl = baseUrl;
-	for(let key in getReqParams){
-		// noinspection JSUnfilteredForInLoop
-        reqUrl+="?"+key+"="+getReqParams[key];
-	}
+	let reqUrl = baseUrl+path;
+	if(getReqParams!==undefined){
+	    reqUrl+="?";
+        for(let key in getReqParams){
+            // noinspection JSUnfilteredForInLoop
+            reqUrl+="&"+key+"="+getReqParams[key];
+        }
+    }
     return new Request(reqUrl, properties);
 }
 
