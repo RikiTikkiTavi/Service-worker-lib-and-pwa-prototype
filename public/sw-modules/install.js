@@ -5,8 +5,8 @@
 *
 * */
 
-async function aelInstall() {
-	self.addEventListener('install', event => {
+async function aelInstall(handleInstallationComplete) {
+	self.addEventListener('install', async event => {
 		if (PARAMS.doCache) {
 			event.waitUntil(
 				caches.open(PARAMS.cacheName).then(async cache => {
@@ -64,7 +64,8 @@ async function aelInstall() {
 					//      if available-space > file-size: fetch file
 					//      if need-to-cache-file header is true: put file to cache
 
-					downloadAndCacheFiles(filesArr, freeSpace, 'https://pa.adac.rsm-stage.de/', cache)
+					let result = await downloadAndCacheFiles(filesArr, freeSpace, 'https://pa.adac.rsm-stage.de/', cache)
+					handleInstallationComplete(result)
 				})
 			);
 		}
