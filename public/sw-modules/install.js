@@ -40,7 +40,8 @@ async function aelInstall(handleInstallationComplete) {
 					let responseRaw;
 					(
 						{freeSpace, responseRaw} = await downloadAndCacheRequest(
-							apiRequestAdac, 0, undefined, freeSpace, apiRequestAdacPARAMS, cache
+							constructUrl(swRequest.baseUrl, swRequest.mainApiPath, swRequest.getReqParams),
+							0, undefined, freeSpace, swRequest.mainReqParams, cache
 						)
 					);
 					let response = await responseRaw.json();

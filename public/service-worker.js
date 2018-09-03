@@ -9,7 +9,7 @@ self.importScripts(
     './sw-modules/update.js',
 );
 
-let adac = {
+const swRequest = {
     baseUrl: 'https://pa.adac.rsm-stage.de',
     mainApiPath: "/api/contents/bjoern@hempel.li/updates/contents.json",
     headersInit:
@@ -27,18 +27,23 @@ let adac = {
         {
             method: 'GET',
         },
-    imagesReqParams:
+    filesReqHeadersInit:
         {
-            headers: apiRequestAdacImagesHeaders,
+            'Authorization': 'Basic ' + btoa('rsm:rsm2017')
+        },
+    filesReqParams:
+        {
             mode: 'no-cors',
             method: 'GET',
             credentials: "include"
         },
 };
+swRequest.mainReqParams.headers = new Headers(swRequest.headersInit);
+swRequest.filesReqParams.headers = new Headers(swRequest.filesReqHeadersInit);
 
-const adacApiReq = constructRequest(
-    adac.baseUrl, adac.mainApiPath, adac.mainReqParams, adac.headersInit, adac.getReqParams
-);
+for (var pair of swRequest.mainReqParams.headers.entries()) {
+    console.log(pair[0]+ ': '+ pair[1]);
+}
 
 console.info("SERVICE WORKER", "CALLING aelActivate");
 // Delete old unused caches if exist

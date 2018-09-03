@@ -17,59 +17,46 @@ API requirements:
 
 */
 
-
-/*
-* ADAC CONSTANTS
-* */
-
-const apiRequestAdac =
-	'https://pa.adac.rsm-stage.de/api/contents/bjoern@hempel.li/updates/contents.json?confirm=0&firstupdate=1&last_update=0&token=80efdb358e43b56b15a9af74bcdca3b8b595eac7f1fd47aca0b01dfa005c91d0';
-
-const apiRequestAdacHeaders = new Headers({
-	'Authorization': 'Basic ' + btoa('rsm:rsm2017')
-});
-
-const apiRequestAdacPARAMS = {
-	headers: apiRequestAdacHeaders,
-};
-
-// Temporary cross-origin req
-const apiRequestAdacImagesHeaders = new Headers({
-	'Authorization': 'Basic ' + btoa('rsm:rsm2017'),
-});
-
-const apiRequestAdacPARAMSImages = {
-	headers: apiRequestAdacImagesHeaders,
-	mode: 'no-cors',
-    method: 'GET',
-    credentials: "include"
-};
-
-// !! baseUrl without / in the end
-
-// TODO: documentation
-// TODO: Handle POST request construction
 /**
  *
  * @description Creates request object with specified params
- * @param {string} baseUrl
- * @param {string} path
+ * @param {string} baseUrl - baseUrl without / in the end
+ * @param {string} path - relative to baseUrl path
  * @param {Object} properties - props of Request
  * @param {Object} headersInit - Headers in format "key": "value"
  * @param {Object} getReqParams - Get request properties in format "key": "value"
  * @returns {Request} - request object
  */
 function constructRequest(baseUrl, path, properties, headersInit, getReqParams){
-	properties.headers = new Headers(headersInit);
-	let reqUrl = baseUrl+path;
-	if(getReqParams!==undefined){
-	    reqUrl+="?";
+    properties.headers = new Headers(headersInit);
+    let reqUrl = baseUrl+path;
+    if(getReqParams!==undefined){
+        reqUrl+="?";
         for(let key in getReqParams){
             // noinspection JSUnfilteredForInLoop
             reqUrl+="&"+key+"="+getReqParams[key];
         }
     }
     return new Request(reqUrl, properties);
+}
+
+/**
+ *
+ * @param baseUrl
+ * @param path
+ * @param getReqParams
+ * @returns {string}
+ */
+function constructUrl(baseUrl, path, getReqParams){
+    let reqUrl = baseUrl+path;
+    if(getReqParams!==undefined){
+        reqUrl+="?";
+        for(let key in getReqParams){
+            // noinspection JSUnfilteredForInLoop
+            reqUrl+="&"+key+"="+getReqParams[key];
+        }
+    }
+    return reqUrl
 }
 
 /**
@@ -80,20 +67,20 @@ function constructRequest(baseUrl, path, properties, headersInit, getReqParams){
  * @description Checks if cache is old by comparing with cacheOldenTime value
  */
 async function checkCachesThroughCachedTimestamp(cacheOldenTime) {
-	let isCacheOld;
-	const currentTimestamp = Math.round((new Date()).getTime() / 1000);
-	let cacheTimestampResponse = await caches.match('/get_cache_timestamp');
-	let cacheTimestamp = await cacheTimestampResponse.text();
-	if (cacheTimestamp !== undefined) {
-		const timeDiff = currentTimestamp - cacheTimestamp;
-		if (timeDiff > cacheOldenTime) {
-			console.log("CACHE IS OLDER THEN: ", cacheOldenTime, " Difference: ", timeDiff);
-			isCacheOld = true
-		} else {
-			isCacheOld = false;
-		}
-	}
-	return {isCacheOld, cacheTimestamp}
+    let isCacheOld;
+    const currentTimestamp = Math.round((new Date()).getTime() / 1000);
+    let cacheTimestampResponse = await caches.match('/get_cache_timestamp');
+    let cacheTimestamp = await cacheTimestampResponse.text();
+    if (cacheTimestamp !== undefined) {
+        const timeDiff = currentTimestamp - cacheTimestamp;
+        if (timeDiff > cacheOldenTime) {
+            console.log("CACHE IS OLDER THEN: ", cacheOldenTime, " Difference: ", timeDiff);
+            isCacheOld = true
+        } else {
+            isCacheOld = false;
+        }
+    }
+    return {isCacheOld, cacheTimestamp}
 }
 
 // ADAC: Must have code key for checking update status
@@ -111,29 +98,40 @@ async function checkCachesThroughCachedTimestamp(cacheOldenTime) {
  */
 async function checkCachesThroughApi(cacheTimestamp) {
 
-	console.log('checkCachesThroughApi()');
+    console.log('checkCachesThroughApi()');
 
-	// API Request with last update timestamp
-	const apiRequestAdac =
-		'https://pa.adac.rsm-stage.de/api/contents/bjoern@hempel.li/updates/contents.json?confirm=0firstupdate=1&last_update=' +
-		cacheTimestamp + '&token=80efdb358e43b56b15a9af74bcdca3b8b595eac7f1fd47aca0b01dfa005c91d0';
+    let requestParams = {...swRequest};
+    requestParams.getReqParams["last_update"] = cacheTimestamp.toString();
+    let request = constructRequest(
+        requestParams.baseUrl, requestParams.mainApiPath, requestParams.mainReqParams,
+        requestParams.headersInit, requestParams.getReqParams
+    );
 
-	let response;
-	let isCacheUpToDate;
-	let headers;
+/*
+    // API Request with last update timestamp
+    const apiRequestAdac =
+        'https://pa.adac.rsm-stage.de/api/contents/bjoern@hempel.li/updates/contents.json?confirm=0firstupdate=1&last_update=' +
+        cacheTimestamp + '&token=80efdb358e43b56b15a9af74bcdca3b8b595eac7f1fd47aca0b01dfa005c91d0';
+*/
 
-	try {
-		let responseRaw = await fetch(apiRequestAdac, apiRequestAdacPARAMS);
-		headers = responseRaw.headers;
-		response = await responseRaw.json();
-		console.log("UPDATE RECEIVED", response);
-		isCacheUpToDate = parseInt(response.code) !== 5;
-	} catch (e) {
-		console.log(e);
-		response = 404;
-	}
 
-	return {isCacheUpToDate, response, headers}
+
+    let response;
+    let isCacheUpToDate;
+    let headers;
+
+    try {
+        let responseRaw = await fetch(request);
+        headers = responseRaw.headers;
+        response = await responseRaw.json();
+        console.log("UPDATE RECEIVED", response);
+        isCacheUpToDate = parseInt(response.code) !== 5;
+    } catch (e) {
+        console.log(e);
+        response = 404;
+    }
+
+    return {isCacheUpToDate, response, headers}
 
 }
 
@@ -145,7 +143,7 @@ async function checkCachesThroughApi(cacheTimestamp) {
  * @description Deletes cached request
  */
 async function deleteCachedRequest(requestUrl, cache) {
-	cache.delete(requestUrl).then(result => result)
+    cache.delete(requestUrl).then(result => result)
 }
 
 
@@ -154,24 +152,24 @@ async function deleteCachedRequest(requestUrl, cache) {
  * @description Detects free space in cache storage.
  */
 async function getFreeSpace() {
-	let freeSpace;
-	if (
-		'storage' in navigator &&
-		'estimate' in navigator.storage
-	) {
-		try {
-			const {usage, quota} = await navigator.storage.estimate();
-			freeSpace = quota - usage;
-		}
-		catch (e) {
-			console.error(PARAMS.storageEstimateLoadError);
-			console.log(e.stack);
-		}
-	} else {
-		console.error(PARAMS.storageApiUnavailableError);
-	}
+    let freeSpace;
+    if (
+        'storage' in navigator &&
+        'estimate' in navigator.storage
+    ) {
+        try {
+            const {usage, quota} = await navigator.storage.estimate();
+            freeSpace = quota - usage;
+        }
+        catch (e) {
+            console.error(PARAMS.storageEstimateLoadError);
+            console.log(e.stack);
+        }
+    } else {
+        console.error(PARAMS.storageApiUnavailableError);
+    }
 
-	return freeSpace;
+    return freeSpace;
 }
 
 
@@ -187,56 +185,56 @@ async function getFreeSpace() {
  * @description Downloads and caches request if enough space, if not - tries to free space;
  */
 async function downloadAndCacheRequest(
-	requestUrl, size, cachePriority, freeSpace, requestParams = {}, cache
+    requestUrl, size, cachePriority, freeSpace, requestParams = {}, cache
 ) {
 
-	let responseRaw;
-	if (size < freeSpace) {
-		await fetch(requestUrl, requestParams).then(
-			rRaw => {
-				responseRaw = rRaw.clone();
-				// We can check here file headers if needed
+    let responseRaw;
+    if (size < freeSpace) {
+        await fetch(requestUrl, requestParams).then(
+            rRaw => {
+                responseRaw = rRaw.clone();
+                // We can check here file headers if needed
 
-				// Set headers for easy delete of low-prior files later
-				let headers;
-				// noinspection JSCheckFunctionSignatures
+                // Set headers for easy delete of low-prior files later
+                let headers;
+                // noinspection JSCheckFunctionSignatures
                 headers = new Headers({
-					'cachepriority': cachePriority,
-					'size': size
-				});
+                    'cachepriority': cachePriority,
+                    'size': size
+                });
 
-				let reqObject = new Request(requestUrl, {headers: headers});
-				// noinspection JSIgnoredPromiseFromCall
+                let reqObject = new Request(requestUrl, {headers: headers});
+                // noinspection JSIgnoredPromiseFromCall
                 cache.put(reqObject, rRaw);
-			}
-		);
-		freeSpace -= size;
-	} else {
+            }
+        );
+        freeSpace -= size;
+    } else {
 
-		console.error(PARAMS.fileSpaceError);
+        console.error(PARAMS.fileSpaceError);
 
-		let {reqToDelete, emulatedFreeSpace} = await emulateDeleteFromCacheToFreeSpace(
-			size, cachePriority, freeSpace, cache
-		);
+        let {reqToDelete, emulatedFreeSpace} = await emulateDeleteFromCacheToFreeSpace(
+            size, cachePriority, freeSpace, cache
+        );
 
-		// If emulatedFreeSpace is enough - cache file, else - not available to cache file
-		if (size < emulatedFreeSpace) {
-			for (let i in reqToDelete) {
-				await deleteCachedRequest(reqToDelete[i].url, cache)
-			}
-			freeSpace = emulatedFreeSpace;
-			(
-				{freeSpace, responseRaw} = await downloadAndCacheRequest(
-					requestUrl, size, cachePriority, freeSpace, requestParams, cache
-				)
-			)
-		} else {
-			console.error(PARAMS.unableToFreeSpaceError);
-		}
+        // If emulatedFreeSpace is enough - cache file, else - not available to cache file
+        if (size < emulatedFreeSpace) {
+            for (let i in reqToDelete) {
+                await deleteCachedRequest(reqToDelete[i].url, cache)
+            }
+            freeSpace = emulatedFreeSpace;
+            (
+                {freeSpace, responseRaw} = await downloadAndCacheRequest(
+                    requestUrl, size, cachePriority, freeSpace, requestParams, cache
+                )
+            )
+        } else {
+            console.error(PARAMS.unableToFreeSpaceError);
+        }
 
-	}
+    }
 
-	return {freeSpace, responseRaw}
+    return {freeSpace, responseRaw}
 }
 
 /**
@@ -249,33 +247,33 @@ async function downloadAndCacheRequest(
  * an array of Requests and amount of space, that could be free
  */
 async function emulateDeleteFromCacheToFreeSpace(
-	size, cachePriority, freeSpace, cache
+    size, cachePriority, freeSpace, cache
 ) {
 
-	// Array of cached requests
-	let requestsArr = await cache.keys();
+    // Array of cached requests
+    let requestsArr = await cache.keys();
 
-	// Bubble sort by cachepriority
-	requestsArr = bSortArrAndRmNoCache(requestsArr, false, undefined, 'cachepriority');
+    // Bubble sort by cachepriority
+    requestsArr = bSortArrAndRmNoCache(requestsArr, false, undefined, 'cachepriority');
 
-	let reqToDelete = [];
-	let emulatedFreeSpace = freeSpace;
+    let reqToDelete = [];
+    let emulatedFreeSpace = freeSpace;
 
-	// Try to free space
-	while (size>emulatedFreeSpace) {
-		let requestsArrLength = requestsArr.length;
-		let lastReq = requestsArr[requestsArrLength - 1];
-		let lastCachePrior = parseInt(lastReq.headers.get('cachepriority'));
-		let lastSize = parseInt(lastReq.headers.get('size'));
-		if (lastCachePrior > cachePriority) {
-			reqToDelete.push(lastReq);
-			emulatedFreeSpace += lastSize;
-			requestsArr.splice(requestsArrLength - 1, 1)
-		} else {
-			break;
-		}
-	}
-	return {reqToDelete, emulatedFreeSpace}
+    // Try to free space
+    while (size > emulatedFreeSpace) {
+        let requestsArrLength = requestsArr.length;
+        let lastReq = requestsArr[requestsArrLength - 1];
+        let lastCachePrior = parseInt(lastReq.headers.get('cachepriority'));
+        let lastSize = parseInt(lastReq.headers.get('size'));
+        if (lastCachePrior > cachePriority) {
+            reqToDelete.push(lastReq);
+            emulatedFreeSpace += lastSize;
+            requestsArr.splice(requestsArrLength - 1, 1)
+        } else {
+            break;
+        }
+    }
+    return {reqToDelete, emulatedFreeSpace}
 }
 
 // ADAC: File in Files array must have path property!
@@ -294,20 +292,20 @@ async function emulateDeleteFromCacheToFreeSpace(
 async function downloadAndCacheFiles(filesArr, freeSpace, baseUrl, cache) {
 
     try {
-		for (const i in filesArr) {
-			const file = filesArr[i];
-			const fileReq = baseUrl + file.path;
-			(
-				{freeSpace} = await downloadAndCacheRequest(
-					fileReq, file.size, file.cachePriority, freeSpace, apiRequestAdacPARAMSImages, cache
-				)
-			)
-		}
-		return true;
-	} catch (e) {
-		console.error(e);
-		return false;
-	}
+        for (const i in filesArr) {
+            const file = filesArr[i];
+            const fileReq = baseUrl + file.path;
+            (
+                {freeSpace} = await downloadAndCacheRequest(
+                    fileReq, file.size, file.cachePriority, freeSpace, swRequest.filesReqParams, cache
+                )
+            )
+        }
+        return true;
+    } catch (e) {
+        console.error(e);
+        return false;
+    }
 }
 
 // ADAC: Must have response.files - array of files
@@ -324,47 +322,47 @@ async function downloadAndCacheFiles(filesArr, freeSpace, baseUrl, cache) {
  */
 async function downloadUpdateAndCacheFiles(cachedResponse, response, cache, baseApiUrl) {
 
-	let freeSpace = await getFreeSpace();
-	console.log("downloadUpdateAndCacheFiles() -> freeSpace", freeSpace);
+    let freeSpace = await getFreeSpace();
+    console.log("downloadUpdateAndCacheFiles() -> freeSpace", freeSpace);
 
-	// ADAC: TEMPORARY add params to files
-	let filesArr = tempAddPARAMSToFiles(response.files);
+    // ADAC: TEMPORARY add params to files
+    let filesArr = tempAddPARAMSToFiles(response.files);
 
-	// Sort them and remove no-cache files
-	filesArr = bSortArrAndRmNoCache(filesArr, false, 'cachePriority');
+    // Sort them and remove no-cache files
+    filesArr = bSortArrAndRmNoCache(filesArr, false, 'cachePriority');
 
-	for (let id in filesArr) {
-		// noinspection JSUnfilteredForInLoop
-        const file = filesArr[id];
-		// noinspection JSUnfilteredForInLoop
-        const cachedFile = cachedResponse.files[id];
-		const fileReq = baseApiUrl+file.path;
-		// If file exists in cache
+    for (let id in filesArr) {
         // noinspection JSUnfilteredForInLoop
-		if (cachedResponse.files.hasOwnProperty(id)) {
+        const file = filesArr[id];
+        // noinspection JSUnfilteredForInLoop
+        const cachedFile = cachedResponse.files[id];
+        const fileReq = baseApiUrl + file.path;
+        // If file exists in cache
+        // noinspection JSUnfilteredForInLoop
+        if (cachedResponse.files.hasOwnProperty(id)) {
 
-			// update file in cachedResponse and in Cache
-			(
-				{cachedResponse, freeSpace} = await updateFileInCachedResponseAndCaches(
-					cachedFile, file, cachedResponse, fileReq, freeSpace, cache
-				)
-			)
+            // update file in cachedResponse and in Cache
+            (
+                {cachedResponse, freeSpace} = await updateFileInCachedResponseAndCaches(
+                    cachedFile, file, cachedResponse, fileReq, freeSpace, cache
+                )
+            )
 
-		}
-		// If file NOT exists in cache
-		else {
-			// noinspection JSUnfilteredForInLoop
+        }
+        // If file NOT exists in cache
+        else {
+            // noinspection JSUnfilteredForInLoop
             cachedResponse.files[id] = file;
-			if (file.needToCache) {
-				(
-					{freeSpace} = await downloadAndCacheRequest(
-						fileReq, file.size, file.cachePriority, freeSpace, apiRequestAdacPARAMSImages, cache
-					)
-				)
-			}
-		}
-	}
-	return cachedResponse.files
+            if (file.needToCache) {
+                (
+                    {freeSpace} = await downloadAndCacheRequest(
+                        fileReq, file.size, file.cachePriority, freeSpace, swRequest.filesReqParams, cache
+                    )
+                )
+            }
+        }
+    }
+    return cachedResponse.files
 }
 
 // ADAC: File in Files object must have path property!
@@ -382,33 +380,33 @@ async function downloadUpdateAndCacheFiles(cachedResponse, response, cache, base
  * @param {Cache} cache - cache interface
  * @returns {Promise<{cachedResponse: Object, freeSpace: number}>}
  */
-async function updateFileInCachedResponseAndCaches (
-	cachedFile, file, cachedResponse, fileReq, freeSpace, cache
-){
-	// If file in cache has same path and size
-	if (file.path === cachedFile.path && file.size === cachedFile.size) {
-		cachedResponse.files[id] = file;
-		if (!file.needToCache) {
-			await deleteCachedRequest(cachedFile.path, cache);
-		}
-		freeSpace+=cachedFile.size;
-	}
-	// If file in cache has NOT the same path and size
-	else {
-		// If file needs to be cached
-		// Delete old file
-		await deleteCachedRequest(cachedFile.path, cache);
-		freeSpace+=cachedFile.size;
-		cachedResponse.files[id] = file;
-		if (file.needToCache) {
-			(
-				{freeSpace} = await downloadAndCacheRequest(
-					fileReq, file.size, file.cachePriority, freeSpace, apiRequestAdacPARAMSImages, cache
-				)
-			)
-		}
-	}
-	return {cachedResponse, freeSpace}
+async function updateFileInCachedResponseAndCaches(
+    cachedFile, file, cachedResponse, fileReq, freeSpace, cache
+) {
+    // If file in cache has same path and size
+    if (file.path === cachedFile.path && file.size === cachedFile.size) {
+        cachedResponse.files[id] = file;
+        if (!file.needToCache) {
+            await deleteCachedRequest(cachedFile.path, cache);
+        }
+        freeSpace += cachedFile.size;
+    }
+    // If file in cache has NOT the same path and size
+    else {
+        // If file needs to be cached
+        // Delete old file
+        await deleteCachedRequest(cachedFile.path, cache);
+        freeSpace += cachedFile.size;
+        cachedResponse.files[id] = file;
+        if (file.needToCache) {
+            (
+                {freeSpace} = await downloadAndCacheRequest(
+                    fileReq, file.size, file.cachePriority, freeSpace, swRequest.filesReqParams, cache
+                )
+            )
+        }
+    }
+    return {cachedResponse, freeSpace}
 }
 
 
@@ -417,8 +415,8 @@ async function updateFileInCachedResponseAndCaches (
  * @param cache
  */
 function setCurrentTimestamp(cache) {
-	const currentTimestamp = Math.round(new Date().getTime() / 1000);
-	// noinspection JSCheckFunctionSignatures
+    const currentTimestamp = Math.round(new Date().getTime() / 1000);
+    // noinspection JSCheckFunctionSignatures
     cache.put('/get_cache_timestamp', new Response(currentTimestamp));
 }
 
@@ -431,28 +429,28 @@ function setCurrentTimestamp(cache) {
  * 404 if offline or api unavailable
  */
 async function updateCachesIfOld(cacheOldenTime, cache) {
-	console.log('updateCachesIfOld()');
-	let {isCacheOld, cacheTimestamp} = await checkCachesThroughCachedTimestamp(cacheOldenTime);
-	if (isCacheOld) {
-		let {isCacheUpToDate, response, headers} = await checkCachesThroughApi(cacheTimestamp);
+    console.log('updateCachesIfOld()');
+    let {isCacheOld, cacheTimestamp} = await checkCachesThroughCachedTimestamp(cacheOldenTime);
+    if (isCacheOld) {
+        let {isCacheUpToDate, response, headers} = await checkCachesThroughApi(cacheTimestamp);
 
-		console.log('updateCachesIfOld() -> isCacheUpToDate', isCacheUpToDate);
-		console.log('updateCachesIfOld() -> response', response);
+        console.log('updateCachesIfOld() -> isCacheUpToDate', isCacheUpToDate);
+        console.log('updateCachesIfOld() -> response', response);
 
-		if (response !== 404) {
-			if (isCacheUpToDate === false) {
-				// setCurrentTimestamp(PARAMS);
-				await updateCaches(response, headers, cache);
-				return 1
-			}
-		}
-		if (response === 404) {
-			// User is offline. Show message, that caches might be old
-			console.log("User is offline. Show message, that caches might be old");
-			return 404;
-		}
-	}
-	return 0;
+        if (response !== 404) {
+            if (isCacheUpToDate === false) {
+                // setCurrentTimestamp(PARAMS);
+                await updateCaches(response, headers, cache);
+                return 1
+            }
+        }
+        if (response === 404) {
+            // User is offline. Show message, that caches might be old
+            console.log("User is offline. Show message, that caches might be old");
+            return 404;
+        }
+    }
+    return 0;
 }
 
 // TODO: Improve messages sending to customize notifications
@@ -461,13 +459,13 @@ async function updateCachesIfOld(cacheOldenTime, cache) {
  * @param {String} msg - message
  */
 function sendMessage(msg) {
-	self.clients.matchAll().then(function (clients) {
-		clients.forEach(function (client) {
-			client.postMessage({
-				msg: msg
-			});
-		});
-	});
+    self.clients.matchAll().then(function (clients) {
+        clients.forEach(function (client) {
+            client.postMessage({
+                msg: msg
+            });
+        });
+    });
 }
 
 // ADAC: TRUE/FALSE headers must have values 1 or 0
@@ -478,7 +476,7 @@ function sendMessage(msg) {
  * @returns {boolean} - true if header value is 1, false if header value is 1
  */
 function isHeaderValueTrue(response, headerName) {
-	return response.headers.get(headerName) === '1';
+    return response.headers.get(headerName) === '1';
 }
 
 
@@ -487,16 +485,16 @@ function isHeaderValueTrue(response, headerName) {
  * @param updateResult
  */
 function handleUpdateResult(updateResult) {
-	console.log("UPDATE RESULT", updateResult);
-	if (updateResult === 1) {
-		sendMessage(PARAMS.refreshSuccessMessage)
-	}
-	if (updateResult === 0) {
-		console.log("Content is up to date")
-	}
-	if (updateResult === 404) {
-		sendMessage(PARAMS.refreshFailMessage)
-	}
+    console.log("UPDATE RESULT", updateResult);
+    if (updateResult === 1) {
+        sendMessage(PARAMS.refreshSuccessMessage)
+    }
+    if (updateResult === 0) {
+        console.log("Content is up to date")
+    }
+    if (updateResult === 404) {
+        sendMessage(PARAMS.refreshFailMessage)
+    }
 }
 
 // ADAC: Updates now only categories and files
@@ -510,32 +508,34 @@ function handleUpdateResult(updateResult) {
  */
 async function updateCaches(response, headers, cache) {
 
-	// Get raw cache response
-	let cachedResponseRaw = await caches.match(apiRequestAdac, {ignoreVary: true});
-	let cachedResponse = await cachedResponseRaw.json();
-	console.log("updateCaches -> cachedResponse:", cachedResponse);
+    let mainApiReqUrl = constructUrl(swRequest.baseUrl, swRequest.mainApiPath, swRequest.getReqParams);
 
-	cachedResponse.timestamp = response.timestamp;
-	cachedResponse.code = response.code;
-	cachedResponse.message = response.message;
+    // Get raw cache response
+    let cachedResponseRaw = await caches.match(mainApiReqUrl, {ignoreVary: true});
+    let cachedResponse = await cachedResponseRaw.json();
+    console.log("updateCaches -> cachedResponse:", cachedResponse);
 
-	// Temporary update only categories
-	// Update categories
-	for (let id in response.categories) {
-		// noinspection JSUnfilteredForInLoop
+    cachedResponse.timestamp = response.timestamp;
+    cachedResponse.code = response.code;
+    cachedResponse.message = response.message;
+
+    // Temporary update only categories
+    // Update categories
+    for (let id in response.categories) {
+        // noinspection JSUnfilteredForInLoop
         cachedResponse.categories[id] = response.categories[id];
-	}
+    }
 
-	// Update files
-	cachedResponse.files = await downloadUpdateAndCacheFiles(cachedResponse, response, cache, PARAMS.baseApiUrl);
+    // Update files
+    cachedResponse.files = await downloadUpdateAndCacheFiles(cachedResponse, response, cache, PARAMS.baseApiUrl);
 
-	// Create new cache Response
-	let cachedResponseRawNew = new Response(JSON.stringify(cachedResponse), {headers: headers});
+    // Create new cache Response
+    let cachedResponseRawNew = new Response(JSON.stringify(cachedResponse), {headers: headers});
 
-	// Update timestamp and update Response in caches
-	console.log("Setting new timestamp and updating cache");
+    // Update timestamp and update Response in caches
+    console.log("Setting new timestamp and updating cache");
     await setCurrentTimestamp(cache);
-	cache.put(apiRequestAdac, cachedResponseRawNew);
+    cache.put(mainApiReqUrl, cachedResponseRawNew);
 }
 
 
@@ -547,17 +547,17 @@ async function updateCaches(response, headers, cache) {
  * API unavailable
  */
 async function tryFetchFromServer(request, reqtype) {
-	let serverResponse;
-	try {
-	    if(reqtype!==undefined){
-            serverResponse = await fetch(request, apiRequestAdacPARAMSImages)
-        }else{
+    let serverResponse;
+    try {
+        if (reqtype !== undefined) {
+            serverResponse = await fetch(request, swRequest.filesReqParams)
+        } else {
             serverResponse = await fetch(request)
         }
-	} catch (e) {
-		console.log(e)
-	}
-	return serverResponse;
+    } catch (e) {
+        console.log(e)
+    }
+    return serverResponse;
 }
 
 // ADAC: response must have needToCache header
@@ -571,13 +571,13 @@ async function tryFetchFromServer(request, reqtype) {
  * @returns {Promise<void>}
  */
 async function handleFetchServerResponse(serverResponse, param, cache, needToCacheHeaderName) {
-	if (
-		isHeaderValueTrue(serverResponse, needToCacheHeaderName)
-		&& PARAMS[param]
-	) {
-		// noinspection JSIgnoredPromiseFromCall
+    if (
+        isHeaderValueTrue(serverResponse, needToCacheHeaderName)
+        && PARAMS[param]
+    ) {
+        // noinspection JSIgnoredPromiseFromCall
         cache.put(event.request.url, serverResponse.clone());
-	}
+    }
 }
 
 // ADAC: response must have needToCache (name can be custom) header
@@ -590,36 +590,36 @@ async function handleFetchServerResponse(serverResponse, param, cache, needToCac
  */
 async function handleFetchImage(event, cache, dummyUrl) {
 
-	// Try to get the response from a cache.
-	const cachedResponse = await caches.match(event.request);
+    // Try to get the response from a cache.
+    const cachedResponse = await caches.match(event.request);
 
-	// If no cache try to make request
-	if (cachedResponse === undefined) {
+    // If no cache try to make request
+    if (cachedResponse === undefined) {
 
-		// Check if server is available
-		let serverResponse = await tryFetchFromServer(event.request, 'img');
+        // Check if server is available
+        let serverResponse = await tryFetchFromServer(event.request, 'img');
 
-		// If server is available
-		if (serverResponse !== undefined) {
+        // If server is available
+        if (serverResponse !== undefined) {
 
-			/*
-			* Cache image on each server response if:
-			* 1) need-to-cache-file header
-			* 2) Images fetch caching is enabled */
+            /*
+            * Cache image on each server response if:
+            * 1) need-to-cache-file header
+            * 2) Images fetch caching is enabled */
 
-			await handleFetchServerResponse(serverResponse, 'enableGeneralImagesCaching', cache, PARAMS.needToCacheHeaderName);
+            await handleFetchServerResponse(serverResponse, 'enableGeneralImagesCaching', cache, PARAMS.needToCacheHeaderName);
 
-			return serverResponse
-		}
+            return serverResponse
+        }
 
-		// If server not available return dummy image
-		return caches.match(dummyUrl);
-	}
+        // If server not available return dummy image
+        return caches.match(dummyUrl);
+    }
 
-	//Else return cached image
-	else {
-		return cachedResponse;
-	}
+    //Else return cached image
+    else {
+        return cachedResponse;
+    }
 }
 
 // ADAC: response must have needToCache (name can be custom) header
@@ -630,28 +630,28 @@ async function handleFetchImage(event, cache, dummyUrl) {
  * @returns {Promise<Response>} - cached response or server response or homepage
  */
 async function handleFetchOther(event, cache) {
-	let cachedResponse;
-	cachedResponse = await caches.match(event.request, {ignoreVary: true});
-	if (cachedResponse !== undefined) {
-		return cachedResponse;
-	}
+    let cachedResponse;
+    cachedResponse = await caches.match(event.request, {ignoreVary: true});
+    if (cachedResponse !== undefined) {
+        return cachedResponse;
+    }
 
-	// Try to get the response from a server if cacheResponse is undefined.
-	let serverResponse = await tryFetchFromServer(event.request);
+    // Try to get the response from a server if cacheResponse is undefined.
+    let serverResponse = await tryFetchFromServer(event.request);
 
-	// If server is available
-	if (serverResponse !== undefined) {
-		// On this point we know, that fresh cache for this req doesn't exist,
-		/*
-		* Here we cache Response, if (fresh cache for this req doesn't exist):
-		* 1) Header param
-		* 2) General fetch caching is enabled */
-		await handleFetchServerResponse(serverResponse, 'enableGeneralFetchCaching', cache, PARAMS.needToCacheHeaderName);
-		return serverResponse
-	}
+    // If server is available
+    if (serverResponse !== undefined) {
+        // On this point we know, that fresh cache for this req doesn't exist,
+        /*
+        * Here we cache Response, if (fresh cache for this req doesn't exist):
+        * 1) Header param
+        * 2) General fetch caching is enabled */
+        await handleFetchServerResponse(serverResponse, 'enableGeneralFetchCaching', cache, PARAMS.needToCacheHeaderName);
+        return serverResponse
+    }
 
-	//TODO: Notify user if page is unavailable
-	return await caches.match('/', {ignoreVary: true});
+    //TODO: Notify user if page is unavailable
+    return await caches.match('/', {ignoreVary: true});
 }
 
 
@@ -665,50 +665,50 @@ async function handleFetchOther(event, cache) {
  * @returns {array<Object>} - sorted array
  */
 function bSortArrAndRmNoCache(arr, doRemoveWhereNoNeedToCache, property, headerNameAsParam) {
-	let len = arr.length;
-	let swapped;
-	do {
-		swapped = false;
-		for (let i = 0; i < len; i++) {
-			if (doRemoveWhereNoNeedToCache) {
-				if (arr[i].needToCache === 0) {
-					arr.splice(i, 1);
-					len--;
-				}
-				if (i === len - 1 || i === len) {
-					break;
-				}
-			}
+    let len = arr.length;
+    let swapped;
+    do {
+        swapped = false;
+        for (let i = 0; i < len; i++) {
+            if (doRemoveWhereNoNeedToCache) {
+                if (arr[i].needToCache === 0) {
+                    arr.splice(i, 1);
+                    len--;
+                }
+                if (i === len - 1 || i === len) {
+                    break;
+                }
+            }
 
-			let val;
-			let valNext;
+            let val;
+            let valNext;
 
-			if (headerNameAsParam !== undefined) {
-				val = arr[i].headers.get(headerNameAsParam);
-				valNext = arr[i + 1].headers.get(headerNameAsParam);
-			}
-			else {
-				val = arr[i][property];
-				valNext = arr[i + 1][property];
-			}
-			if (val > valNext) {
-				const tmp = arr[i];
-				arr[i] = arr[i + 1];
-				arr[i + 1] = tmp;
-				swapped = true;
-			}
-		}
-	} while (swapped);
-	return arr;
+            if (headerNameAsParam !== undefined) {
+                val = arr[i].headers.get(headerNameAsParam);
+                valNext = arr[i + 1].headers.get(headerNameAsParam);
+            }
+            else {
+                val = arr[i][property];
+                valNext = arr[i + 1][property];
+            }
+            if (val > valNext) {
+                const tmp = arr[i];
+                arr[i] = arr[i + 1];
+                arr[i + 1] = tmp;
+                swapped = true;
+            }
+        }
+    } while (swapped);
+    return arr;
 }
 
 // Temporary
 function tempAddPARAMSToFiles(filesArr) {
-	for (let i = 0; i < filesArr.length; i++) {
-		filesArr[i].cachePriority = Math.floor(Math.random() * 5);
-		filesArr[i].needToCache = Math.round(Math.random());
-	}
-	return filesArr;
+    for (let i = 0; i < filesArr.length; i++) {
+        filesArr[i].cachePriority = Math.floor(Math.random() * 5);
+        filesArr[i].needToCache = Math.round(Math.random());
+    }
+    return filesArr;
 }
 
 
@@ -719,14 +719,14 @@ function tempAddPARAMSToFiles(filesArr) {
  * @param {Cache} cache - cache interface
  */
 function cacheWithAdditionalHeaders(url, headers, cache) {
-	fetch(url).then((response) => {
-		let newHeaders = new Headers(response.headers);
-		for (let h in headers) {
-			newHeaders.append(h.name, h.value)
-		}
-		response.headers = newHeaders;
-		cache.put(url, response);
-	});
+    fetch(url).then((response) => {
+        let newHeaders = new Headers(response.headers);
+        for (let h in headers) {
+            newHeaders.append(h.name, h.value)
+        }
+        response.headers = newHeaders;
+        cache.put(url, response);
+    });
 }
 
 
@@ -737,16 +737,20 @@ function cacheWithAdditionalHeaders(url, headers, cache) {
  * @returns {Promise<Array>} - returns urls ready to add to cache
  */
 async function getStaticUrls(assetManifestUrl, staticFilesArray) {
-	let urlsToCache = [];
-	let assetsResponse = await fetch(assetManifestUrl);
-	let assets = await assetsResponse.json();
-	for (let id in staticFilesArray) {
-		let file = staticFilesArray[id];
-		if (assets.hasOwnProperty(file)) {
-			urlsToCache.push(assets[file])
-		} else {
-			urlsToCache.push(file)
-		}
-	}
-	return urlsToCache;
+    let urlsToCache = [];
+    let assetsResponse = await fetch(assetManifestUrl);
+    let assets = await assetsResponse.json();
+    for (let id in staticFilesArray) {
+        let file = staticFilesArray[id];
+        if (assets.hasOwnProperty(file)) {
+            urlsToCache.push(assets[file])
+        } else {
+            urlsToCache.push(file)
+        }
+    }
+    return urlsToCache;
+}
+
+function handleInstallationComplete(result){
+    console.log("Installation completed:", result)
 }
