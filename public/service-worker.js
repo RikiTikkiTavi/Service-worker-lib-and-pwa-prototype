@@ -27,31 +27,27 @@ const swRequest = {
         {
             method: 'GET',
         },
-    filesReqHeadersInit:
-        {
-            'Authorization': 'Basic ' + btoa('rsm:rsm2017')
-        },
     filesReqParams:
         {
             mode: 'no-cors',
             method: 'GET',
             credentials: "include"
         },
+    filesReqHeadersInit:
+        {
+            'Authorization': 'Basic ' + btoa('rsm:rsm2017')
+        },
 };
 swRequest.mainReqParams.headers = new Headers(swRequest.headersInit);
 swRequest.filesReqParams.headers = new Headers(swRequest.filesReqHeadersInit);
 
-for (var pair of swRequest.mainReqParams.headers.entries()) {
-    console.log(pair[0]+ ': '+ pair[1]);
-}
+console.info("SERVICE WORKER", "CALLING aelInstall");
+// This triggers when user starts the app
+aelInstall();
 
 console.info("SERVICE WORKER", "CALLING aelActivate");
 // Delete old unused caches if exist
 aelActivate();
-
-console.info("SERVICE WORKER", "CALLING aelInstall");
-// This triggers when user starts the app
-aelInstall(handleInstallationComplete);
 
 console.info("SERVICE WORKER", "CALLING aelFetch");
 // Here we intercept request and serve up the matching files

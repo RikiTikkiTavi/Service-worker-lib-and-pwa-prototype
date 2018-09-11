@@ -1,7 +1,5 @@
 // TODO: In every Fetch request as Request object
 // TODO: Lib to OOP style
-// TODO: Abstract from ADAC request
-// TODO: Construct main API request from PARAMS
 /*
 
 API requirements:
@@ -458,11 +456,12 @@ async function updateCachesIfOld(cacheOldenTime, cache) {
  * Sends message to client
  * @param {String} msg - message
  */
-function sendMessage(msg) {
+function sendMessage(msg, event) {
     self.clients.matchAll().then(function (clients) {
         clients.forEach(function (client) {
             client.postMessage({
-                msg: msg
+                msg: msg,
+                event: event
             });
         });
     });

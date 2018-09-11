@@ -129,12 +129,17 @@ class Root extends Component {
 
 ReactDOM.render(<Root/>, document.getElementById('root'));
 
-registerServiceWorker();
+function handleInstallationComplete(){
+    alert("SW Installation completed. App will be restarted to activate PWA potential.")
+    location.reload()
+}
 
-function displayNotification(message, options) {
+registerServiceWorker(handleInstallationComplete);
+
+function displayNotification(data, options) {
 	if (Notification.permission === 'granted') {
 		navigator.serviceWorker.getRegistration().then(function(reg) {
-			reg.showNotification(message, options);
+			reg.showNotification(data.msg, options);
 		});
 	}
 }

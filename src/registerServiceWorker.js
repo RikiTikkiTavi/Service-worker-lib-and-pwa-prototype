@@ -9,16 +9,16 @@
 // To learn more about the benefits of this model, read https://goo.gl/KwvDNy.
 // This link also includes instructions on opting out of this behavior.
 
-function requestNotificationsPermission() {
-	Notification.requestPermission(function (status) {
+async function requestNotificationsPermission() {
+	await Notification.requestPermission(function (status) {
 		console.log('Notification permission status:', status);
 	});
 }
 
-function addMessagesEventListener(sw) {
-	sw.addEventListener('message', event => {
+async function addMessagesEventListener(sw) {
+	await sw.addEventListener('message', async event => {
 		console.log("NEW MESSAGE", event.data);
-		displayNotification(event.data.msg, {});
+		await displayNotification(event.data, {});
 	});
 }
 
@@ -32,7 +32,7 @@ const isLocalhost = Boolean(
 	)
 );
 
-export default function register() {
+export default function register(handleInstallationComplete) {
 	if (/*process.env.NODE_ENV === 'production' && */'serviceWorker' in navigator) {
 		// The URL constructor is available in all browsers that support SW.
 		const publicUrl = new URL(process.env.PUBLIC_URL, window.location);
@@ -45,22 +45,25 @@ export default function register() {
 
 		window.addEventListener('load', () => {
 			const swUrl = `/service-worker.js`;
-			checkValidServiceWorker(swUrl);
-			registerValidSW(swUrl);
+			checkValidServiceWorker(swUrl, handleInstallationComplete);
+			registerValidSW(swUrl, handleInstallationComplete);
 		});
 	}
 }
 
-function registerValidSW(swUrl) {
+function registerValidSW(swUrl, handleInstallationComplete) {
 	navigator.serviceWorker
 		.register(swUrl)
 		.then(registration => {
 			registration.onupdatefound = () => {
 				const installingWorker = registration.installing;
-				installingWorker.onstatechange = () => {
+				installingWorker.onstatechange = async () => {
 					if (installingWorker.state === 'installed') {
-						requestNotificationsPermission();
-						addMessagesEventListener(navigator.serviceWorker);
+						await requestNotificationsPermission();
+						await addMessagesEventListener(navigator.serviceWorker);
+						// FORCE RELOAD OR ASK USER TO RELOAD
+                        handleInstallationComplete();
+						location.reload()
 					}
 				};
 			};
@@ -70,7 +73,7 @@ function registerValidSW(swUrl) {
 		});
 }
 
-function checkValidServiceWorker(swUrl) {
+function checkValidServiceWorker(swUrl, handleInstallationComplete) {
 	// Check if the service worker can be found. If it can't reload the page.
 	fetch(swUrl)
 		.then(response => {
@@ -87,7 +90,7 @@ function checkValidServiceWorker(swUrl) {
 				});
 			} else {
 				// Service worker found. Proceed as normal.
-				registerValidSW(swUrl);
+				registerValidSW(swUrl, handleInstallationComplete);
 			}
 		})
 		.catch(() => {
