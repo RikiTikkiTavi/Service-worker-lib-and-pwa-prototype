@@ -28,5 +28,9 @@ var PARAMS = {
 
 	// Messages
 	installationCompleteMsg: 'App is ready for offline use',
-	installationFailMsg: "App can't download content for offline use"
+	installationFailMsg: "App can't download content for offline use",
+
+	// Update params
+	whatToUpdate: ['categories'] // Array of API response object properties ("property": Object<id: value>)
+								 // that contain content.
 };

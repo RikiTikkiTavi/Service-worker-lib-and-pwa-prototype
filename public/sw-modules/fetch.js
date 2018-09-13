@@ -5,7 +5,7 @@ function aelFetch() {
             let cache = await caches.open(PARAMS.cacheName);
 
             if (event.request.url.indexOf('/update-caches') !== -1) {
-                let updateResult = await updateCachesIfOld(PARAMS.cacheOldenTime, cache);
+                let updateResult = await updateCachesIfOld(PARAMS.cacheOldenTime, cache, PARAMS.whatToUpdate);
                 handleUpdateResult(updateResult);
                 console.log(updateResult);
                 return new Response(updateResult);

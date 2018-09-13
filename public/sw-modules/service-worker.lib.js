@@ -39,7 +39,7 @@ function constructRequest(baseUrl, path, properties, headersInit, getReqParams){
 }
 
 /**
- *
+ * @description Constructs GET request url
  * @param baseUrl
  * @param path
  * @param getReqParams
@@ -409,7 +409,7 @@ async function updateFileInCachedResponseAndCaches(
 
 
 /**
- * Sets current timestamp on request /get_cache_timestamp
+ * @description Sets current timestamp on request /get_cache_timestamp
  * @param cache
  */
 function setCurrentTimestamp(cache) {
@@ -420,13 +420,14 @@ function setCurrentTimestamp(cache) {
 
 
 /**
- * Updates caches if caches older then cacheOldenTime and response has updates
+ * @description Updates caches if caches older then cacheOldenTime and response has updates
  * @param {number} cacheOldenTime - time after cache is old (seconds)
  * @param {Cache} cache - cache Interface
+ * @param {Array<String>} whatToUpdate - Response params for update (for files use other function!)
  * @returns {Promise<number>} - 1 if have updated cache, 0 if caches are up to date,
  * 404 if offline or api unavailable
  */
-async function updateCachesIfOld(cacheOldenTime, cache) {
+async function updateCachesIfOld(cacheOldenTime, cache, whatToUpdate) {
     console.log('updateCachesIfOld()');
     let {isCacheOld, cacheTimestamp} = await checkCachesThroughCachedTimestamp(cacheOldenTime);
     if (isCacheOld) {
@@ -438,7 +439,7 @@ async function updateCachesIfOld(cacheOldenTime, cache) {
         if (response !== 404) {
             if (isCacheUpToDate === false) {
                 // setCurrentTimestamp(PARAMS);
-                await updateCaches(response, headers, cache);
+                await updateCaches(response, headers, cache, whatToUpdate);
                 return 1
             }
         }
@@ -453,8 +454,9 @@ async function updateCachesIfOld(cacheOldenTime, cache) {
 
 // TODO: Improve messages sending to customize notifications
 /**
- * Sends message to client
+ * @description Sends message to client
  * @param {String} msg - message
+ * @param {String} event - custom string, can be handled on frontend to do some action
  */
 function sendMessage(msg, event) {
     self.clients.matchAll().then(function (clients) {
@@ -469,7 +471,7 @@ function sendMessage(msg, event) {
 
 // ADAC: TRUE/FALSE headers must have values 1 or 0
 /**
- * Converts header value to true/false
+ * @description Converts header value to true/false
  * @param response
  * @param headerName
  * @returns {boolean} - true if header value is 1, false if header value is 1
@@ -480,32 +482,41 @@ function isHeaderValueTrue(response, headerName) {
 
 
 /**
+ * @description Function to handle update Result.
  * Converts update result code in message and sends it to client
  * @param updateResult
+ * @param success - callback on success
+ * @param upToDate - callback on content is up to date
+ * @param fail - callback on fail
  */
-function handleUpdateResult(updateResult) {
+function handleUpdateResult(updateResult, success, upToDate, fail) {
     console.log("UPDATE RESULT", updateResult);
     if (updateResult === 1) {
-        sendMessage(PARAMS.refreshSuccessMessage)
+        success();
+        console.log("[UPDATE SUCCESS]")
     }
     if (updateResult === 0) {
-        console.log("Content is up to date")
+        upToDate();
+        console.log("[Content is up to date]")
     }
     if (updateResult === 404) {
-        sendMessage(PARAMS.refreshFailMessage)
+        fail();
+        console.error("[UPDATE FAILED]")
     }
 }
 
 // ADAC: Updates now only categories and files
+// ADAC: API must have timestamp, code, message params
 // TODO: What to update must be param
 /**
  * @description Cache update flow
  * @param response - Fresh response
  * @param headers - Old headers
  * @param cache - result of caches.open
+ * @param {Array<String>} whatToUpdate - Response params for update (for files use other function!)
  * @returns {Promise<void>}
  */
-async function updateCaches(response, headers, cache) {
+async function updateCaches(response, headers, cache, whatToUpdate) {
 
     let mainApiReqUrl = constructUrl(swRequest.baseUrl, swRequest.mainApiPath, swRequest.getReqParams);
 
@@ -518,11 +529,15 @@ async function updateCaches(response, headers, cache) {
     cachedResponse.code = response.code;
     cachedResponse.message = response.message;
 
-    // Temporary update only categories
-    // Update categories
-    for (let id in response.categories) {
+    //TODO: Test
+    // Update response params that have content
+    for(let i in whatToUpdate){
         // noinspection JSUnfilteredForInLoop
-        cachedResponse.categories[id] = response.categories[id];
+        let param = whatToUpdate[i];
+        for (let id in response[param]) {
+            // noinspection JSUnfilteredForInLoop
+            cachedResponse[param][id] = response[param][id];
+        }
     }
 
     // Update files
@@ -539,7 +554,7 @@ async function updateCaches(response, headers, cache) {
 
 
 /**
- * Fetches request from server
+ * @description Fetches request from server
  * ADAC: temporary with type param to set request params (avoiding CORB)
  * @param {String} request - request to fetch
  * @returns {Promise<Response|undefined>} - Response on success, undefined if offline or
@@ -561,7 +576,7 @@ async function tryFetchFromServer(request, reqtype) {
 
 // ADAC: response must have needToCache header
 /**
- * Function handles response from server, if general caching in params is enabled and
+ * @description Function handles response from server, if general caching in params is enabled and
  * needToCache header is true
  * @param {Response} serverResponse - Response
  * @param {String} param - param in PARAMS that enables/disables general caching for req of this type
@@ -581,7 +596,7 @@ async function handleFetchServerResponse(serverResponse, param, cache, needToCac
 
 // ADAC: response must have needToCache (name can be custom) header
 /**
- * Handles images caching logic when user makes request
+ * @description Handles images caching logic when user makes request
  * @param event - fetch event
  * @param {Cache} cache - cache Interface
  * @param {String} dummyUrl - Url of dummy image
@@ -621,7 +636,7 @@ async function handleFetchImage(event, cache, dummyUrl) {
     }
 }
 
-// ADAC: response must have needToCache (name can be custom) header
+//ADAC: response must have needToCache (name can be custom) header
 /**
  * Handle other content caching logic when user makes request
  * @param event - fetch event
@@ -649,7 +664,7 @@ async function handleFetchOther(event, cache) {
         return serverResponse
     }
 
-    //TODO: Notify user if page is unavailable
+    //TODO: Notify user if page is unavailable. F.E use sendMessage with specific params and handle that problem in react.
     return await caches.match('/', {ignoreVary: true});
 }
 
@@ -748,8 +763,4 @@ async function getStaticUrls(assetManifestUrl, staticFilesArray) {
         }
     }
     return urlsToCache;
-}
-
-function handleInstallationComplete(result){
-    console.log("Installation completed:", result)
 }

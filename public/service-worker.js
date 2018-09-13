@@ -9,6 +9,18 @@ self.importScripts(
     './sw-modules/update.js',
 );
 
+
+/**
+ * @description Object to specify params for API request
+ * @type {
+     *       {
+     *          baseUrl: string, mainApiPath: string, headersInit: {Authorization: string},
+     *          getReqParams: {confirm: string, firstupdate: string, last_update: string, token: string},
+     *          mainReqParams: {method: string}, filesReqParams: {mode: string, method: string, credentials: string},
+     *          filesReqHeadersInit: {Authorization: string}
+     *       }
+ *       }
+ */
 const swRequest = {
     baseUrl: 'https://pa.adac.rsm-stage.de',
     mainApiPath: "/api/contents/bjoern@hempel.li/updates/contents.json",

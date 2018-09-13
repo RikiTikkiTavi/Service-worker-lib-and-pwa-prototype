@@ -1,11 +1,6 @@
 /* eslint-disable no-undef,no-shadow,no-param-reassign */
 
-/*
-*
-*
-* */
-
-async function aelInstall(handleInstallationComplete) {
+async function aelInstall() {
 	self.addEventListener('install', event => {
 		if (PARAMS.doCache) {
 			event.waitUntil(
