@@ -2,8 +2,8 @@
 import React, {Component} from 'react';
 import PropTypes from 'prop-types';
 import {connect} from 'react-redux';
-import CategoryListPreload from './category-list-preload'
-import CategoryList from './category-list'
+import CategoryListPreload from './templates/category-list-preload'
+import CategoryList from './category-list-index'
 
 class App extends Component {
 	constructor(props) {
@@ -16,10 +16,8 @@ class App extends Component {
 				<CategoryListPreload/>
 			);
 		}
-		const CATEGORIES = this.props.categories;
-
 		return (
-			<CategoryList CATEGORIES = {CATEGORIES}/>
+			<CategoryList CATEGORIES = {this.props.categories}/>
 		);
 	}
 }

@@ -485,22 +485,16 @@ function isHeaderValueTrue(response, headerName) {
  * @description Function to handle update Result.
  * Converts update result code in message and sends it to client
  * @param updateResult
- * @param success - callback on success
- * @param upToDate - callback on content is up to date
- * @param fail - callback on fail
  */
-function handleUpdateResult(updateResult, success, upToDate, fail) {
+function handleUpdateResult(updateResult) {
     console.log("UPDATE RESULT", updateResult);
     if (updateResult === 1) {
-        success();
         console.log("[UPDATE SUCCESS]")
     }
     if (updateResult === 0) {
-        upToDate();
         console.log("[Content is up to date]")
     }
     if (updateResult === 404) {
-        fail();
         console.error("[UPDATE FAILED]")
     }
 }
@@ -531,13 +525,23 @@ async function updateCaches(response, headers, cache, whatToUpdate) {
 
     //TODO: Test
     // Update response params that have content
+    /*
+    Updates each element of cachedResponse.whatToUpdate. On each updated element sets isUpdated = 1. On each
+    updated cachedResponse.whatToUpdate sets updatedElementsQuantity = number and isUpdated = 1.
+    */
     for(let i in whatToUpdate){
+        let updatedElementsQuantity = 0;
         // noinspection JSUnfilteredForInLoop
         let param = whatToUpdate[i];
         for (let id in response[param]) {
             // noinspection JSUnfilteredForInLoop
             cachedResponse[param][id] = response[param][id];
+            updatedElementsQuantity++;
+            // noinspection JSUnfilteredForInLoop
+            cachedResponse[param][id]["isUpdated"] = 1;
         }
+        cachedResponse[param]["isUpdated"] = 1;
+        cachedResponse[param]["updatedElementsQuantity"] = updatedElementsQuantity
     }
 
     // Update files
