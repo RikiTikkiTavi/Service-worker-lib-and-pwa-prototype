@@ -19,7 +19,14 @@ function swAddMsgMessageListener(){
     navigator.serviceWorker.addEventListener('message', event => {
         console.log("RECEIVED MESSAGE", event.data);
         displayNotification(event.data.msg);
+        launchEvent(event.data.event)
     })
+}
+
+function launchEvent (event){
+    if(event==="reload_api"){
+        window.rootComponent.fetchAdacApi();
+    }
 }
 
 function triggerCacheUpdateCheckOnDOMUpdate(newHistory){

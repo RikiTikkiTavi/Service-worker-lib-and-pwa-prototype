@@ -47,3 +47,7 @@ body {
   width: 100%;
   background: #e3e3e3;
 }
+
+.dot--display{
+  display: block!important;
+}

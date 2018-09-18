@@ -2,10 +2,11 @@ import {Link} from 'react-router-dom'
 import React from "react";
 
 function CategoryItem(props) {
-    const {category, keyIndex, stylesObject} = props;
+    const {category, keyIndex, stylesObject, updateDot} = props;
 
     return (
         <div key={keyIndex} className='col-md-12'>
+            {updateDot}
             <div className="card" style={stylesObject}>
                 <div className="card-body">
                     <h5 className="card-title">{category.title}</h5>

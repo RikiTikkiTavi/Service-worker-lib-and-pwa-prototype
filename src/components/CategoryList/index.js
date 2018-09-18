@@ -5,6 +5,7 @@ import {connect} from 'react-redux';
 import CategoryListPreload from './templates/category-list-preload'
 import CategoryList from './category-list-index'
 
+
 class App extends Component {
 	constructor(props) {
 		super(props);

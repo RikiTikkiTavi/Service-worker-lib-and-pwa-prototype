@@ -489,7 +489,8 @@ function isHeaderValueTrue(response, headerName) {
 function handleUpdateResult(updateResult) {
     console.log("UPDATE RESULT", updateResult);
     if (updateResult === 1) {
-        console.log("[UPDATE SUCCESS]")
+        console.log("[UPDATE SUCCESS]");
+        sendMessage("", "reload_api")
     }
     if (updateResult === 0) {
         console.log("[Content is up to date]")
