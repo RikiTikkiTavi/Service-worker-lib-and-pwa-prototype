@@ -12,7 +12,6 @@ class UpdateButton extends Component {
     triggerUpdate() {
         fetch('/update-caches').then((r) => {
             r.text().then((rText) => {
-                window.rootComponent.fetchAdacApi();
                 switch (rText) {
                     case '0':
                         this.setState({updateStatus: '0: No Update'});

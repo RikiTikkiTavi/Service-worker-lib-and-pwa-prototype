@@ -47,8 +47,15 @@ class Root extends Component {
 
     handleAdacApiModelFetchSuccess(model) {
         let AdacApiModelJSON = model.toJSON();
-        let categories = AdacApiModelJSON.categories;
-        this.setState({categories: categories, loading: false});
+        let updatedElementsQuantity = AdacApiModelJSON.categories['updatedElementsQuantity'];
+        delete AdacApiModelJSON.categories['updatedElementsQuantity'];
+
+        let CATEGORIES = {
+            elements: AdacApiModelJSON.categories,
+            updatedElementsQuantity: updatedElementsQuantity
+        };
+
+        this.setState({CATEGORIES: CATEGORIES, loading: false});
     }
 
     handleAdacApiModelFetchError(model, response, options) {
@@ -75,7 +82,7 @@ class Root extends Component {
     }
 
     render() {
-        const {loading, categories} = this.state;
+        const {loading, CATEGORIES} = this.state;
         return (
             <Provider store={store}>
                 <BrowserRouter history={newHistory}>
@@ -88,7 +95,7 @@ class Root extends Component {
                                path="/categories"
                                render={
                                    () => <Categories loading={loading}
-                                                     categories={categories} />
+                                                     CATEGORIES={CATEGORIES} />
                                }
                         />
                         <Route exact={true}
@@ -96,7 +103,7 @@ class Root extends Component {
                                render={
                                    (props) => <CategoryFull {...props}
                                                             loading={loading}
-                                                            categories={categories} />
+                                                            CATEGORIES={CATEGORIES} />
                                }
                         />
                     </Fragment>

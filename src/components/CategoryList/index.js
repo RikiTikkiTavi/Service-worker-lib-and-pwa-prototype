@@ -18,7 +18,7 @@ class App extends Component {
 			);
 		}
 		return (
-			<CategoryList CATEGORIES = {this.props.categories}/>
+			<CategoryList CATEGORIES = {this.props.CATEGORIES}/>
 		);
 	}
 }
@@ -26,7 +26,7 @@ class App extends Component {
 App.propTypes = {
 	dispatch: PropTypes.func,
 	loading: PropTypes.bool,
-	categories: PropTypes.object
+	CATEGORIES: PropTypes.object
 };
 
 export default connect((state, props, dispatch) => ({

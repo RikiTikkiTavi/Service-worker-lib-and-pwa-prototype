@@ -6,13 +6,14 @@ import UpdateDot from './templates/update-dot'
 
 class CategoryListIndex extends Component {
     render() {
-        const CATEGORIES = this.props.CATEGORIES;
+        const ctgrs = this.props.CATEGORIES.elements;
+        let updatedElementsQuantity = this.props.CATEGORIES['updatedElementsQuantity'];
         return (
 
-            <CategoryList>
-                {Object.keys(CATEGORIES).map((keyName, keyIndex) => {
+            <CategoryList updatedElementsQuantity={updatedElementsQuantity}>
+                {Object.keys(ctgrs).map((keyName, keyIndex) => {
 
-                    const category = CATEGORIES[keyName];
+                    const category = ctgrs[keyName];
 
                     let stylesObject = {
                         backgroundImage: `url(https://pa.adac.rsm-stage.de/${category.image_bg})`

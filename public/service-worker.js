@@ -7,6 +7,7 @@ self.importScripts(
     './sw-modules/install.js',
     './sw-modules/fetch.js',
     './sw-modules/update.js',
+    './sw-modules/test.js'
 );
 
 

@@ -105,15 +105,6 @@ async function checkCachesThroughApi(cacheTimestamp) {
         requestParams.headersInit, requestParams.getReqParams
     );
 
-/*
-    // API Request with last update timestamp
-    const apiRequestAdac =
-        'https://pa.adac.rsm-stage.de/api/contents/bjoern@hempel.li/updates/contents.json?confirm=0firstupdate=1&last_update=' +
-        cacheTimestamp + '&token=80efdb358e43b56b15a9af74bcdca3b8b595eac7f1fd47aca0b01dfa005c91d0';
-*/
-
-
-
     let response;
     let isCacheUpToDate;
     let headers;
@@ -122,8 +113,10 @@ async function checkCachesThroughApi(cacheTimestamp) {
         let responseRaw = await fetch(request);
         headers = responseRaw.headers;
         response = await responseRaw.json();
-        console.log("UPDATE RECEIVED", response);
-        isCacheUpToDate = parseInt(response.code) !== 5;
+        console.log("RESPONSE RECEIVED", response);
+        // TEMP!
+        // isCacheUpToDate = parseInt(response.code) !== 5;
+        isCacheUpToDate = false
     } catch (e) {
         console.log(e);
         response = 404;
@@ -516,7 +509,7 @@ async function updateCaches(response, headers, cache, whatToUpdate) {
     let mainApiReqUrl = constructUrl(swRequest.baseUrl, swRequest.mainApiPath, swRequest.getReqParams);
 
     // Get raw cache response
-    let cachedResponseRaw = await caches.match(mainApiReqUrl, {ignoreVary: true});
+    let cachedResponseRaw = await caches.match(mainApiReqUrl, {ignoreVary: true, ignoreSearch: true});
     let cachedResponse = await cachedResponseRaw.json();
     console.log("updateCaches -> cachedResponse:", cachedResponse);
 
@@ -534,19 +527,27 @@ async function updateCaches(response, headers, cache, whatToUpdate) {
         let updatedElementsQuantity = 0;
         // noinspection JSUnfilteredForInLoop
         let param = whatToUpdate[i];
-        for (let id in response[param]) {
-            // noinspection JSUnfilteredForInLoop
-            cachedResponse[param][id] = response[param][id];
-            updatedElementsQuantity++;
-            // noinspection JSUnfilteredForInLoop
-            cachedResponse[param][id]["isUpdated"] = 1;
+        if(response.hasOwnProperty(param)) {
+            for (let id in response[param]) {
+                // noinspection JSUnfilteredForInLoop
+                cachedResponse[param][id] = response[param][id];
+                updatedElementsQuantity++;
+                // noinspection JSUnfilteredForInLoop
+                cachedResponse[param][id]["isUpdated"] = 1;
+            }
+            cachedResponse[param]["isUpdated"] = 1;
+            cachedResponse[param]["updatedElementsQuantity"] = updatedElementsQuantity
         }
-        cachedResponse[param]["isUpdated"] = 1;
-        cachedResponse[param]["updatedElementsQuantity"] = updatedElementsQuantity
     }
 
     // Update files
-    cachedResponse.files = await downloadUpdateAndCacheFiles(cachedResponse, response, cache, PARAMS.baseApiUrl);
+    if(response.files!==undefined) {
+        cachedResponse.files = await downloadUpdateAndCacheFiles(cachedResponse, response, cache, PARAMS.baseApiUrl);
+    }
+
+    // ADAC TEMP randomly add updateStatus to categories
+    cachedResponse.categories = await tempRandomAddUpdateStatuses(cachedResponse.categories);
+    console.log(cachedResponse.categories);
 
     // Create new cache Response
     let cachedResponseRawNew = new Response(JSON.stringify(cachedResponse), {headers: headers});
@@ -554,7 +555,8 @@ async function updateCaches(response, headers, cache, whatToUpdate) {
     // Update timestamp and update Response in caches
     console.log("Setting new timestamp and updating cache");
     await setCurrentTimestamp(cache);
-    cache.put(mainApiReqUrl, cachedResponseRawNew);
+    await cache.delete(mainApiReqUrl, {ignoreVary:true, ignoreSearch: true});
+    await cache.put(mainApiReqUrl, cachedResponseRawNew);
 }
 
 
@@ -650,9 +652,10 @@ async function handleFetchImage(event, cache, dummyUrl) {
  */
 async function handleFetchOther(event, cache) {
     let cachedResponse;
-    cachedResponse = await caches.match(event.request, {ignoreVary: true});
+    cachedResponse = await caches.match(event.request, {ignoreVary: true, ignoreSearch: true});
     if (cachedResponse !== undefined) {
         return cachedResponse;
+        console.log("RETURN CACHED")
     }
 
     // Try to get the response from a server if cacheResponse is undefined.
