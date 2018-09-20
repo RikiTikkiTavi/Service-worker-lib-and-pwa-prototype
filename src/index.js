@@ -45,14 +45,36 @@ class Root extends Component {
         };
     }
 
-    handleAdacApiModelFetchSuccess(model) {
+    async getObjectFromLocalStorage(keyName){
+        let LS = window.localStorage;
+        let ObjJSON = LS.getItem(keyName)
+        let Obj = await JSON.parse(ObjJSON)
+        return Obj
+    }
+
+    addUpdateProps(object, ids){
+        for (let i in ids){
+            object[ids[i]]['isUpdated']=1;
+        }
+        return object
+    }
+
+    async handleAdacApiModelFetchSuccess(model, update) {
         let AdacApiModelJSON = model.toJSON();
-        let updatedElementsQuantity = AdacApiModelJSON.categories['updatedElementsQuantity'];
-        delete AdacApiModelJSON.categories['updatedElementsQuantity'];
+
+        let categories;
+        let cat_q=0;
+        if(update){
+            let categoriesUpdates = await this.getObjectFromLocalStorage("categories");
+            categories = this.addUpdateProps(AdacApiModelJSON.categories, categoriesUpdates["upIDs"]);
+            cat_q = categoriesUpdates["upIDs"].length;
+        } else {
+            categories = AdacApiModelJSON.categories
+        }
 
         let CATEGORIES = {
-            elements: AdacApiModelJSON.categories,
-            updatedElementsQuantity: updatedElementsQuantity
+            elements: categories,
+            updatedElementsQuantity: cat_q
         };
 
         this.setState({CATEGORIES: CATEGORIES, loading: false});
@@ -65,13 +87,32 @@ class Root extends Component {
         alert("Can't load content. This page is not available.")
     }
 
-    fetchAdacApi(){
+    async handleUpdatedElementView(keyName, id){
+        let stateKeyName = keyName.toUpperCase()
+
+        //Update state
+        let obj = this.state[stateKeyName];
+        obj.elements[id]["isUpdated"] = 0;
+        obj.updatedElementsQuantity-=1;
+        this.setState({[stateKeyName]: obj});
+
+        //Update local storage
+        setTimeout(async ()=>{
+            let lsObj = await this.getObjectFromLocalStorage(keyName);
+            let index = lsObj.upIDs.indexOf(id);
+            lsObj.upIDs.splice(index, 1);
+            lsObj.quantity-=1;
+            window.localStorage.setItem(keyName, lsObj);
+        }, 1000)
+    }
+
+    fetchAdacApi(update){
         const AdacApiModel = newAdacApiModel();
         AdacApiModel.fetch({
             headers: {
                 'Authorization': 'Basic cnNtOnJzbTIwMTc='
             },
-            success: (model) => this.handleAdacApiModelFetchSuccess(model),
+            success: (model) => this.handleAdacApiModelFetchSuccess(model, update),
             error: (model, response, options) =>
                 this.handleAdacApiModelFetchError(model, response, options),
         })

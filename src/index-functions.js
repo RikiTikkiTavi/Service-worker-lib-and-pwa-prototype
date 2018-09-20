@@ -19,14 +19,25 @@ function swAddMsgMessageListener(){
     navigator.serviceWorker.addEventListener('message', event => {
         console.log("RECEIVED MESSAGE", event.data);
         displayNotification(event.data.msg);
-        launchEvent(event.data.event)
+        launchEvent(event.data.event, event.data.data)
     })
 }
 
-function launchEvent (event){
+function launchEvent (event, data){
     if(event==="reload_api"){
-        window.rootComponent.fetchAdacApi();
+        window.rootComponent.fetchAdacApi(true);
+    } if(event==='update_LS'){
+        setUpdatedItemsInLocalStore(data.keyName, data.ids)
     }
+}
+
+async function setUpdatedItemsInLocalStore(keyName, ids) {
+    let lStorage = window.localStorage;
+    let uObject = await JSON.stringify({
+        upIDs: ids,
+        quantity: ids.length,
+    });
+    lStorage.setItem(keyName, uObject)
 }
 
 function triggerCacheUpdateCheckOnDOMUpdate(newHistory){

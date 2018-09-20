@@ -13,7 +13,8 @@ function CategoryItem(props) {
                     <p className="card-text">{category.title}</p>
                     <Link
                         to={`/categories/${category.id}`}
-                        className="btn btn-primary text-light">
+                        className="btn btn-primary text-light"
+                        onClick={() => window.rootComponent.handleUpdatedElementView("categories",category.id)}>
                         More
                     </Link>
                 </div>

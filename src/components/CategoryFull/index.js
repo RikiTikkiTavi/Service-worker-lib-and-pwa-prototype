@@ -9,7 +9,8 @@ class CategoryFull extends Component {
 
 	render() {
 
-		const {loading, categories} = this.props;
+		const {loading, CATEGORIES} = this.props;
+		let categories = CATEGORIES.elements;
 
 		if (loading) {
 			return (
@@ -27,7 +28,7 @@ class CategoryFull extends Component {
 
 CategoryFull.propTypes = {
 	dispatch: PropTypes.func,
-	categories: PropTypes.object,
+    CATEGORIES: PropTypes.object,
 	loading: PropTypes.bool
 };
 

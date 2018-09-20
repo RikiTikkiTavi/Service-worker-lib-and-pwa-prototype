@@ -3,13 +3,11 @@ function random50(){
 }
 
 async function tempRandomAddUpdateStatuses(categories){
-    let itemsUpdated = 0;
+    let upIDs = [];
     for(let id in categories){
         if(random50()){
-            categories[id]["isUpdated"] = 1;
-            itemsUpdated++;
+            upIDs.push(id)
         }
     }
-    categories["updatedElementsQuantity"] = itemsUpdated;
-    return categories
+    await sendMessage("", "update_LS", {keyName: "categories", ids:upIDs})
 }

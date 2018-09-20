@@ -25,14 +25,14 @@ API requirements:
  * @param {Object} getReqParams - Get request properties in format "key": "value"
  * @returns {Request} - request object
  */
-function constructRequest(baseUrl, path, properties, headersInit, getReqParams){
+function constructRequest(baseUrl, path, properties, headersInit, getReqParams) {
     properties.headers = new Headers(headersInit);
-    let reqUrl = baseUrl+path;
-    if(getReqParams!==undefined){
-        reqUrl+="?";
-        for(let key in getReqParams){
+    let reqUrl = baseUrl + path;
+    if (getReqParams !== undefined) {
+        reqUrl += "?";
+        for (let key in getReqParams) {
             // noinspection JSUnfilteredForInLoop
-            reqUrl+="&"+key+"="+getReqParams[key];
+            reqUrl += "&" + key + "=" + getReqParams[key];
         }
     }
     return new Request(reqUrl, properties);
@@ -45,13 +45,13 @@ function constructRequest(baseUrl, path, properties, headersInit, getReqParams){
  * @param getReqParams
  * @returns {string}
  */
-function constructUrl(baseUrl, path, getReqParams){
-    let reqUrl = baseUrl+path;
-    if(getReqParams!==undefined){
-        reqUrl+="?";
-        for(let key in getReqParams){
+function constructUrl(baseUrl, path, getReqParams) {
+    let reqUrl = baseUrl + path;
+    if (getReqParams !== undefined) {
+        reqUrl += "?";
+        for (let key in getReqParams) {
             // noinspection JSUnfilteredForInLoop
-            reqUrl+="&"+key+"="+getReqParams[key];
+            reqUrl += "&" + key + "=" + getReqParams[key];
         }
     }
     return reqUrl
@@ -450,13 +450,15 @@ async function updateCachesIfOld(cacheOldenTime, cache, whatToUpdate) {
  * @description Sends message to client
  * @param {String} msg - message
  * @param {String} event - custom string, can be handled on frontend to do some action
+ * @param {Object} data - custom Object to pass data to events on frontend
  */
-function sendMessage(msg, event) {
+function sendMessage(msg, event, data) {
     self.clients.matchAll().then(function (clients) {
         clients.forEach(function (client) {
             client.postMessage({
                 msg: msg,
-                event: event
+                event: event,
+                data: data,
             });
         });
     });
@@ -523,31 +525,25 @@ async function updateCaches(response, headers, cache, whatToUpdate) {
     Updates each element of cachedResponse.whatToUpdate. On each updated element sets isUpdated = 1. On each
     updated cachedResponse.whatToUpdate sets updatedElementsQuantity = number and isUpdated = 1.
     */
-    for(let i in whatToUpdate){
-        let updatedElementsQuantity = 0;
+    for (let i in whatToUpdate) {
         // noinspection JSUnfilteredForInLoop
         let param = whatToUpdate[i];
-        if(response.hasOwnProperty(param)) {
+        if (response.hasOwnProperty(param)) {
             for (let id in response[param]) {
                 // noinspection JSUnfilteredForInLoop
                 cachedResponse[param][id] = response[param][id];
-                updatedElementsQuantity++;
-                // noinspection JSUnfilteredForInLoop
-                cachedResponse[param][id]["isUpdated"] = 1;
             }
-            cachedResponse[param]["isUpdated"] = 1;
-            cachedResponse[param]["updatedElementsQuantity"] = updatedElementsQuantity
+            await sendMessage("", "update_LS", {keyName: param, ids: response[param].keys()})
         }
     }
 
     // Update files
-    if(response.files!==undefined) {
+    if (response.files !== undefined) {
         cachedResponse.files = await downloadUpdateAndCacheFiles(cachedResponse, response, cache, PARAMS.baseApiUrl);
     }
 
     // ADAC TEMP randomly add updateStatus to categories
-    cachedResponse.categories = await tempRandomAddUpdateStatuses(cachedResponse.categories);
-    console.log(cachedResponse.categories);
+    await tempRandomAddUpdateStatuses(cachedResponse.categories);
 
     // Create new cache Response
     let cachedResponseRawNew = new Response(JSON.stringify(cachedResponse), {headers: headers});
@@ -555,10 +551,9 @@ async function updateCaches(response, headers, cache, whatToUpdate) {
     // Update timestamp and update Response in caches
     console.log("Setting new timestamp and updating cache");
     await setCurrentTimestamp(cache);
-    await cache.delete(mainApiReqUrl, {ignoreVary:true, ignoreSearch: true});
+    await cache.delete(mainApiReqUrl, {ignoreVary: true, ignoreSearch: true});
     await cache.put(mainApiReqUrl, cachedResponseRawNew);
 }
-
 
 /**
  * @description Fetches request from server
