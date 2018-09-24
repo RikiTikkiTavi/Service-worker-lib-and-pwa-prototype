@@ -25,7 +25,6 @@ import registerServiceWorker from './registerServiceWorker';
 const newHistory = createBrowserHistory();
 
 import {
-    updateRootState,
     handleInstallationComplete,
     displayNotification,
     swAddMsgMessageListener,
@@ -88,22 +87,27 @@ class Root extends Component {
     }
 
     async handleUpdatedElementView(keyName, id){
-        let stateKeyName = keyName.toUpperCase()
-
-        //Update state
+        let stateKeyName = keyName.toUpperCase();
         let obj = this.state[stateKeyName];
-        obj.elements[id]["isUpdated"] = 0;
-        obj.updatedElementsQuantity-=1;
-        this.setState({[stateKeyName]: obj});
 
-        //Update local storage
-        setTimeout(async ()=>{
-            let lsObj = await this.getObjectFromLocalStorage(keyName);
-            let index = lsObj.upIDs.indexOf(id);
-            lsObj.upIDs.splice(index, 1);
-            lsObj.quantity-=1;
-            window.localStorage.setItem(keyName, lsObj);
-        }, 1000)
+        // Check if element has dot
+        let hasDot = obj.elements[id]["isUpdated"] === 1;
+
+        if (hasDot) {
+            //Update state
+            obj.elements[id]["isUpdated"] = 0;
+            obj.updatedElementsQuantity -= 1;
+            this.setState({[stateKeyName]: obj});
+
+            //Update local storage
+            setTimeout(async () => {
+                let lsObj = await this.getObjectFromLocalStorage(keyName);
+                let index = lsObj.upIDs.indexOf(id);
+                lsObj.upIDs.splice(index, 1);
+                lsObj.quantity -= 1;
+                window.localStorage.setItem(keyName, lsObj);
+            }, 1000)
+        }
     }
 
     fetchAdacApi(update){

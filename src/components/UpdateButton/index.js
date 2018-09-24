@@ -14,13 +14,13 @@ class UpdateButton extends Component {
             r.text().then((rText) => {
                 switch (rText) {
                     case '0':
-                        this.setState({updateStatus: '0: No Update'});
+                        this.setState({updateStatus: '0: No Update.'});
                         break;
                     case '1':
-                        this.setState({updateStatus: '1: Updating. Will notify, when ready'});
+                        this.setState({updateStatus: '1: Updating.'});
                         break;
                     case '404':
-                        this.setState({updateStatus: '404: Error'})
+                        this.setState({updateStatus: '404: Error.'})
                 }
             })
         })

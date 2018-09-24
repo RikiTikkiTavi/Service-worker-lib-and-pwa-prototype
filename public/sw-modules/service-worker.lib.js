@@ -114,9 +114,7 @@ async function checkCachesThroughApi(cacheTimestamp) {
         headers = responseRaw.headers;
         response = await responseRaw.json();
         console.log("RESPONSE RECEIVED", response);
-        // TEMP!
-        // isCacheUpToDate = parseInt(response.code) !== 5;
-        isCacheUpToDate = false
+        isCacheUpToDate = parseInt(response.code) !== 5;
     } catch (e) {
         console.log(e);
         response = 404;
@@ -533,7 +531,9 @@ async function updateCaches(response, headers, cache, whatToUpdate) {
                 // noinspection JSUnfilteredForInLoop
                 cachedResponse[param][id] = response[param][id];
             }
-            await sendMessage("", "update_LS", {keyName: param, ids: response[param].keys()})
+            await sendMessage("", "update_LS", {keyName: param, ids: Object.keys(response[param])})
+        } else {
+            await sendMessage("", "update_LS", {keyName: param, ids: []})
         }
     }
 
@@ -543,7 +543,7 @@ async function updateCaches(response, headers, cache, whatToUpdate) {
     }
 
     // ADAC TEMP randomly add updateStatus to categories
-    await tempRandomAddUpdateStatuses(cachedResponse.categories);
+    // await tempRandomAddUpdateStatuses(cachedResponse.categories);
 
     // Create new cache Response
     let cachedResponseRawNew = new Response(JSON.stringify(cachedResponse), {headers: headers});
