@@ -47,8 +47,11 @@ class Root extends Component {
     async getObjectFromLocalStorage(keyName){
         let LS = window.localStorage;
         let ObjJSON = LS.getItem(keyName)
-        let Obj = await JSON.parse(ObjJSON)
-        return Obj
+        if(ObjJSON!==null) {
+          let Obj = await JSON.parse(ObjJSON)
+          return Obj
+        }
+        return ObjJSON
     }
 
     addUpdateProps(object, ids){
@@ -63,13 +66,22 @@ class Root extends Component {
 
         let categories;
         let cat_q=0;
-        if(update){
-            let categoriesUpdates = await this.getObjectFromLocalStorage("categories");
+        let categoriesUpdates = await this.getObjectFromLocalStorage("categories");
+        if(categoriesUpdates!==null) {
             categories = this.addUpdateProps(AdacApiModelJSON.categories, categoriesUpdates["upIDs"]);
             cat_q = categoriesUpdates["upIDs"].length;
         } else {
             categories = AdacApiModelJSON.categories
         }
+        /*if(update){
+            let categoriesUpdates = await this.getObjectFromLocalStorage("categories");
+            categories = this.addUpdateProps(AdacApiModelJSON.categories, categoriesUpdates["upIDs"]);
+            cat_q = categoriesUpdates["upIDs"].length;
+        } else {
+
+        }*/
+
+
 
         let CATEGORIES = {
             elements: categories,
@@ -105,8 +117,8 @@ class Root extends Component {
                 let index = lsObj.upIDs.indexOf(id);
                 lsObj.upIDs.splice(index, 1);
                 lsObj.quantity -= 1;
-                window.localStorage.setItem(keyName, lsObj);
-            }, 1000)
+                window.localStorage.setItem(keyName, JSON.stringify(lsObj));
+            }, 200)
         }
     }
 

@@ -374,7 +374,7 @@ async function updateFileInCachedResponseAndCaches(
 ) {
     // If file in cache has same path and size
     if (file.path === cachedFile.path && file.size === cachedFile.size) {
-        cachedResponse.files[id] = file;
+        cachedResponse.files[file.id] = file;
         if (!file.needToCache) {
             await deleteCachedRequest(cachedFile.path, cache);
         }
@@ -538,7 +538,7 @@ async function updateCaches(response, headers, cache, whatToUpdate) {
     }
 
     // Update files
-    if (response.files !== undefined) {
+    if (response.files !== undefined && response.files.length > 0) {
         cachedResponse.files = await downloadUpdateAndCacheFiles(cachedResponse, response, cache, PARAMS.baseApiUrl);
     }
 
